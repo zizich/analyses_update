@@ -1,37 +1,15 @@
 import asyncio
 import logging
-import os
-import re
 import platform
-import sqlite3 as sq
-import aiogram
 import locale
-import datetime
 
-from datetime import datetime
 
-from aiogram import Bot, Dispatcher, F
-from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import Message, CallbackQuery
-from aiogram.utils.keyboard import InlineKeyboardBuilder, InlineKeyboardMarkup, InlineKeyboardButton
-from aiogram.filters import CommandStart, Command
-from aiogram.fsm import storage
+from aiogram import Bot, Dispatcher
 
-import registration
-from data_base import (cursor_db, basket_db, date_add_db, all_analysis_db, add_db, order_done_db,
-                       date_person_db, archive_db, profit_db, connect_profit, profit_income_db,
-                       connect_profit_income, job_db, complex_analyses_db, midwifery_db, pattern_db,
-                       connect_pattern, connect_sur_analysis, sur_analysis_db)
-from data_base import (conn, conn_basket, midwifery_conn, conn_analysis, connect_added, connect_order_done,
-                       connect_person_date, connect_archive, connect_job, conn_complex_analyses, connect_midwifery)
-
-# from handler_message.start_command_handler import start_command
 
 from config import BOT_TOKEN
-from handler_message import start_command_handler
-from handler_message.start_command_handler import States
-from keyboard import reply_menu
+from handler_message import start_command_handler, profile
+from registration import first_registration, edit_profileUser
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -50,7 +28,9 @@ system_info = platform.system()
 # ==============================================================================================================
 async def main():
     dp.include_router(start_command_handler.router)
-    dp.include_router(registration.router)
+    dp.include_router(first_registration.router)
+    dp.include_router(profile.router)
+    dp.include_router(edit_profileUser.router)
     await dp.start_polling(bot)
 
 

@@ -1,4 +1,3 @@
-from datetime import datetime
 import re
 
 from aiogram import Router
