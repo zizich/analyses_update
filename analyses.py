@@ -30,7 +30,7 @@ async def main():
     dp.include_router(start_command_handler.router)
     dp.include_router(first_registration.router)
     dp.include_router(profile.router)
-    dp.include_router(edit_profileUser.router)
+    dp.include_router(edit_user.router)
     dp.include_router(childs.router)
     await dp.start_polling(bot)
 
