@@ -8,8 +8,8 @@ from aiogram import Bot, Dispatcher
 
 
 from config import BOT_TOKEN
-from handler_message import start_command_handler, profile
-from registration import first_registration, edit_profileUser
+from handler_message import start_command_handler, profile, childs
+from registration import first_registration, edit_user
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -31,6 +31,7 @@ async def main():
     dp.include_router(first_registration.router)
     dp.include_router(profile.router)
     dp.include_router(edit_profileUser.router)
+    dp.include_router(childs.router)
     await dp.start_polling(bot)
 
 
