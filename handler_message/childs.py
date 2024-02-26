@@ -5,6 +5,7 @@ from aiogram.types import Message, ReplyKeyboardRemove
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from data_base import cursor_db
+from keyboard import reply_menu
 
 router = Router(name=__name__)
 
@@ -128,14 +129,15 @@ async def process_profile_child(message: Message):
                 keyboard_four_child.adjust(2)
 
             else:
-                keyboard_four_child.button("редактировать 1-го \U0001F476", callback_data="edit_child")
-                keyboard_four_child.button("удалить 1-го \U0001F476", callback_data="delete_child_one")
-                keyboard_four_child.button("редактировать 2-го \U0001F476", callback_data="edit_second_child")
-                keyboard_four_child.button("удалить 2-го \U0001F476", callback_data="delete_child_two")
-                keyboard_four_child.button("редактировать 3-го \U0001F476", callback_data="edit_three_child")
-                keyboard_four_child.button("удалить 3-го \U0001F476", callback_data="delete_child_three")
-                keyboard_four_child.button("добавить 4-го \U0001F476  ️➡️", callback_data="add_four_child_button")
+                keyboard_four_child.button(text="редактировать 1-го \U0001F476", callback_data="edit_child")
+                keyboard_four_child.button(text="удалить 1-го \U0001F476", callback_data="delete_child_one")
+                keyboard_four_child.button(text="редактировать 2-го \U0001F476", callback_data="edit_second_child")
+                keyboard_four_child.button(text="удалить 2-го \U0001F476", callback_data="delete_child_two")
+                keyboard_four_child.button(text="редактировать 3-го \U0001F476", callback_data="edit_three_child")
+                keyboard_four_child.button(text="удалить 3-го \U0001F476", callback_data="delete_child_three")
+                keyboard_four_child.button(text="добавить 4-го \U0001F476  ️➡️", callback_data="add_four_child_button")
                 keyboard_four_child.adjust(2)
+
             await message.answer(text="<b>\U0001F476 Дети:</b>" + "\n" +
                                       f"     ♻️ Город: <b>{city}</b>" + "\n" +
                                       f"     ♻️ Адресс: <b>{home_address}</b>" + "\n" +
@@ -183,4 +185,4 @@ async def process_profile_child(message: Message):
             # УСЛОВИЯ ПОСЛЕ УДАЛЕНИЯ РЕБЕНКА ИЗ БД, ВЫВОД В КОНСОЛЬ
     except TypeError:
         await message.answer(text="Ошибка регистрации! Пройдите регистрацию!",
-                             reply_markup=ReplyKeyboardRemove())
+                             reply_markup=reply_menu())
