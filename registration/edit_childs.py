@@ -2,13 +2,11 @@ from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
 
 from aiogram.types import Message, CallbackQuery
-from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from core.fsm_engine import States
-from data_base import cursor_db, conn, basket_db, job_db, conn_basket
-from keyboard import kb_edit_profile, buttons_edit_childs_one, buttons_edit_childs_two, buttons_edit_childs_three, \
+from data_base import cursor_db, conn
+from keyboard import buttons_edit_childs_one, buttons_edit_childs_two, buttons_edit_childs_three, \
     buttons_edit_childs_four
-from keyboard.replykeyboard import reply_menu
 
 router = Router(name=__name__)
 
@@ -72,7 +70,7 @@ async def process_add_child_birth_date_button(message: Message, state: FSMContex
 #                                           Редактировать 1-го ребенка
 # ======================================================================================================
 @router.callback_query(lambda c: c.data == "edit_child")
-async def process_edit_child(call: CallbackQuery, state: FSMContext):
+async def process_edit_child(call: CallbackQuery):
     keyboard = buttons_edit_childs_one()
     await call.message.answer(text="Изменить 1-го ребенка: ", reply_markup=keyboard.as_markup())
 
