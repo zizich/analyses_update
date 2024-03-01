@@ -1,8 +1,7 @@
-from aiogram import types
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 # соединяемся с БД списка общих анализов
-from data_base import all_analysis_db, sur_analysis_db
+from data_base import all_analysis_db
 from data_base import complex_analyses_db
 
 
@@ -40,44 +39,34 @@ from data_base import complex_analyses_db
 #
 #     return keyboard
 
-def search_analyses(name_search, city):
+def search_analyses(name_search):
     # инициализируем коллекцию
     keyboard = InlineKeyboardBuilder()
 
     # Выводим из БД список всех анализов и их параметров. Итерируем анализы по полученной группе (сортировка по
     # уникальному номеру каждого анализа, поиск осуществляется непосредственно по запросу SQL
-    if city in "Сургут":
-        dataBase = sur_analysis_db.execute(f"SELECT * FROM clinic WHERE "
-                                           f"name_analysis LIKE '%{name_search}%' OR "
-                                           f"name_analysis LIKE '%{name_search.capitalize()}%' OR "
-                                           f"name_analysis LIKE '%{name_search.lower()}%' OR "
-                                           f"name_analysis LIKE '%{name_search.upper()}%'")
-    else:
-        dataBase = all_analysis_db.execute(f"SELECT * FROM clinic WHERE "
-                                           f"name_analysis LIKE '%{name_search}%' OR "
-                                           f"name_analysis LIKE '%{name_search.capitalize()}%' OR "
-                                           f"name_analysis LIKE '%{name_search.lower()}%' OR "
-                                           f"name_analysis LIKE '%{name_search.upper()}%'")
+    dataBase = all_analysis_db.execute(f"SELECT * FROM clinic WHERE "
+                                       f"name_analysis LIKE '%{name_search}%' OR "
+                                       f"name_analysis LIKE '%{name_search.capitalize()}%' OR "
+                                       f"name_analysis LIKE '%{name_search.lower()}%' OR "
+                                       f"name_analysis LIKE '%{name_search.upper()}%'")
 
     for i, (sequence, id_list, name_analysis, price, info, tube, readiness, sale, sale_number, price_other, stopped) \
             in enumerate(dataBase.fetchall(), start=1):
         keyboard.button(text="{}\u20BD: {}".format(price, name_analysis.split('(')[0]),
-                        callback_data="id_{}-{}".format(sequence, city))
+                        callback_data="id_{}".format(sequence))
         # создаем inline кнопки по полученным значениям из списка БД
     return keyboard
 
 
 # функция для сбора комплекса по запросу, возвращает строку
-def all_complex(complex_in, city):
+def all_complex(complex_in):
     selected = []  # для выбранных анализов
     sum_price = 0  # комплексная сумма передающая пользователю в консоль
     numbers_collection = []  # переменная для хранения порядкового номера анализа
 
     # ===========================================================================================================
-    if city in "Сургут":
-        result = sur_analysis_db.execute("SELECT * FROM clinic").fetchall()
-    else:
-        result = all_analysis_db.execute("SELECT * FROM clinic").fetchall()
+    result = all_analysis_db.execute("SELECT * FROM clinic").fetchall()
     # ===========================================================================================================
     complex_analyses_db.execute("""SELECT * FROM complex""")
     complex_analysis = complex_analyses_db.fetchall()
