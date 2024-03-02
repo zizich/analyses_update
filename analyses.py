@@ -8,7 +8,8 @@ from aiogram import Bot, Dispatcher
 
 
 from config import BOT_TOKEN
-from all_handler import start_command_handler, profile, childs, other, search_analyses, basket, orders, archive, sale
+from all_handler import start_command_handler, profile, childs, other, search_analyses, basket, orders, archive, sale, \
+    feedback, doctors
 from registration import first_registration, edit_user, edit_childs, edit_other
 
 logging.basicConfig(level=logging.INFO)
@@ -40,6 +41,8 @@ async def main():
     dp.include_router(orders.router)
     dp.include_router(archive.router)
     dp.include_router(sale.router)
+    dp.include_router(feedback.router)
+    dp.include_router(doctors.router)
     await dp.start_polling(bot)
 
 
