@@ -3,13 +3,9 @@ import sqlite3 as sq
 import aiogram
 from aiogram import Router, F
 from aiogram.exceptions import TelegramBadRequest
-from aiogram.types import CallbackQuery, Message, InputFile, FSInputFile
+from aiogram.types import CallbackQuery, Message, FSInputFile
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-
-from core.fsm_engine import States
-from data_base import (basket_db, conn_basket, job_db, date_add_db, midwifery_conn, pattern_db, all_analysis_db,
-                       connect_pattern, profit_income_db, connect_profit_income, order_done_db, connect_order_done,
-                       midwifery_db, archive_db, connect_archive)
+from data_base import (midwifery_db, archive_db, connect_archive)
 
 router = Router(name=__name__)
 
@@ -29,7 +25,7 @@ async def process_go_to_the_archive(message: Message):
     await message.answer(text="\U0001F449 Выберите: ", reply_markup=keyboard.as_markup())
 
 
-# TODO обработка кнопки показать архив - watch_archive
+# обработка кнопки показать архив - watch_archive
 @router.callback_query(lambda c: c.data == "watch_archive")
 async def process_watch_archive(call: CallbackQuery):
     user_id = call.message.chat.id
@@ -79,7 +75,7 @@ async def process_watch_archive(call: CallbackQuery):
         await call.message.answer(text="Архив пустой!")
 
 
-# TODO очистить весь архив
+# очистить весь архив
 @router.callback_query(lambda c: c.data == "delete_archive")
 async def process_delete_archive(call: CallbackQuery):
     user_id = call.message.chat.id
