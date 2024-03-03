@@ -1,7 +1,7 @@
 from aiogram import Router, F, exceptions
 from aiogram.fsm.context import FSMContext
 
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from core.any_process import translate_any_number_analysis
@@ -9,7 +9,7 @@ from core.fsm_engine import States
 from core.search_algorithm import search_analyses, all_complex, all_complex_selected
 from data_base import basket_db, conn_basket, all_analysis_db, add_db, connect_added, \
     profit_db, connect_profit, complex_analyses_db
-from keyboard import base_menu_analyses, info_by_analyses, kb_previous_search, kb_search_analyses_after_done
+from keyboard import base_menu_analyses, info_by_analyses, kb_previous_search, kb_search_analyses_after_done, kb_complex
 
 router = Router(name=__name__)
 
@@ -105,19 +105,21 @@ async def process_income_analysis(call: CallbackQuery):
 
 @router.callback_query(F.data == "back_to_previous_search")
 async def previous_search(call: CallbackQuery):
-    global search_word
-
     try:
         # логика такова: сначала проверяется корзина, выбран ли там город, если город не выбран, то поиск анализов
         # осуществляется по городу выбранной при регистрации, иначе берется город из корзины
 
-        keyboard = search_analyses(search_word)
-        keyboard.button(text="поиск \U0001F50E", callback_data="search_analysis")
-        keyboard.button(text="корзина \U0001F4E5", callback_data="back_to_basket_menu")
-        keyboard.button(text="назад \U000023EA", callback_data="back_to_analyses")
-        keyboard.adjust(1)
-        await call.message.answer(text="\U0000267B Поиск завершен",
-                                  reply_markup=keyboard.as_markup())
+        async def search_kb():
+            global search_word
+            kb_previous = search_analyses(search_word)
+            kb_previous.add(InlineKeyboardButton(text="поиск \U0001F50E", callback_data="search_analysis"))
+            kb_previous.add(InlineKeyboardButton(text="корзина \U0001F4E5", callback_data="back_to_basket_menu"))
+            kb_previous.add(InlineKeyboardButton(text="назад \U000023EA", callback_data="back_to_analyses"))
+            kb_previous.adjust(1)
+            return kb_previous.as_markup()
+
+        await call.message.edit_text(text="\U0000267B Поиск завершен",
+                                     reply_markup=await search_kb())
     except exceptions.TelegramBadRequest:
         keyboard = InlineKeyboardBuilder()
         keyboard.button(text="поиск \U0001F50E", callback_data="search_analysis")
@@ -169,13 +171,16 @@ async def processing_found_analysis_info(call: CallbackQuery):
         outcome = ("\U0000203C " + info + "\n==================" + "\nЦена: {}\u20BD".format(price)
                    + "\nСрок готовности через: {} дн.".format(readiness))
 
-    keyboard = InlineKeyboardBuilder()
-    keyboard.button(text="\U0001F50E поиск ", callback_data="search_analysis")
-    keyboard.button(text="\U0001F4E5 корзина", callback_data="back_to_basket_menu")
-    keyboard.button(text="назад \U000023EA", callback_data=f"id_{idAnalyses}")
-    keyboard.adjust(1)
+    async def inline_kb():
+        keyboard = InlineKeyboardBuilder()
+        keyboard.add(InlineKeyboardButton(text="\U0001F50E поиск ", callback_data="search_analysis"))
+        keyboard.add(InlineKeyboardButton(text="\U0001F4E5 корзина", callback_data="back_to_basket_menu"))
+        keyboard.add(InlineKeyboardButton(text="назад \U000023EA", callback_data=f"id_{idAnalyses}"))
+        keyboard.adjust(1)
 
-    await call.message.answer(text=outcome, reply_markup=keyboard.as_markup())
+        return keyboard.as_markup()
+
+    await call.message.edit_text(text=outcome, reply_markup=await inline_kb())
 
 
 # ОБРАБОТКА КНОПКИ КАЖДОЙ ФУНКЦИИ АНАЛИЗА (УДАЛИТЬ)
@@ -205,24 +210,8 @@ async def processing_found_analysis_delete(call: CallbackQuery):
 async def process_go_to_group_analysis(call: CallbackQuery):
     # Выводим из БД список всех анализов и их параметров. Итерируем анализы по полученной группе (сортировка по
     # - уникальному номеру каждого анализа
-
-    keyboard = InlineKeyboardBuilder()
-
-    all_complex_out = complex_analyses_db.execute("""SELECT * FROM complex""").fetchall()
-
-    try:
-        for i, (name_rus, name_eng, numbers) in enumerate(all_complex_out, start=1):
-            keyboard.button(text=f"{name_rus}", callback_data=f"group_{name_eng}")
-
-        keyboard.button(text="назад \U000023EA", callback_data="back_to_analyses")
-        keyboard.adjust(2)
-        await call.message.answer(text="Комплексы анализов \U0001F5C4:",
-                                  reply_markup=keyboard.as_markup())
-    except TypeError:
-        keyboard.button(text="назад \U000023EA", callback_data="back_to_analyses")
-        keyboard.adjust(1)
-        await call.message.answer(text="Комплексов нет! \U0001F5C4:",
-                                  reply_markup=keyboard.as_markup())
+    await call.message.edit_text(text="Комплексы анализов \U0001F5C4:",
+                                 reply_markup=await kb_complex())
 
 
 # ОБРАБОТКА КНОПКИ ВЫБОРА КОМПЛЕКСА
@@ -234,12 +223,14 @@ async def process_complex_watch(call: CallbackQuery):
         name_eng = call.data.split('group_')[1]
         text_output = all_complex(call.data.split('group_')[1])
 
-        keyboard.button(text="добавить", callback_data=f"addSlctd_{name_eng}")
-        keyboard.button(text="удалить", callback_data=f"delSlctd_{name_eng}")
-        keyboard.button(text="назад \U000023EA", callback_data="group_buttons")
-        keyboard.adjust(2)
+        async def kb_info_complex():
+            keyboard.button(text="добавить", callback_data=f"addSlctd_{name_eng}")
+            keyboard.button(text="удалить", callback_data=f"delSlctd_{name_eng}")
+            keyboard.button(text="назад \U000023EA", callback_data="group_buttons")
+            keyboard.adjust(2)
+            return keyboard.as_markup()
 
-        await call.message.answer(text=text_output, reply_markup=keyboard.as_markup())
+        await call.message.edit_text(text=text_output, reply_markup=await kb_info_complex())
     except (AttributeError, IndexError, TypeError):
 
         keyboard.button(text="назад \U000023EA", callback_data="group_buttons")
@@ -273,11 +264,14 @@ async def process_komplex_add(call: CallbackQuery):
                               (id_list, name_analysis, price, price_other, price_income))
             connect_profit.commit()
 
-    keyboard = InlineKeyboardBuilder()
-    keyboard.button(text="корзина \U0001F4E5", callback_data="back_to_basket_menu")
-    keyboard.button(text="назад \U000023EA", callback_data="group_buttons")
-    keyboard.adjust(1)
-    await call.message.answer(text=outcome, reply_markup=keyboard.as_markup())
+    async def kb_buttons_in():
+        keyboard = InlineKeyboardBuilder()
+        keyboard.button(text="корзина \U0001F4E5", callback_data="back_to_basket_menu")
+        keyboard.button(text="назад \U000023EA", callback_data="group_buttons")
+        keyboard.adjust(1)
+        return keyboard.as_markup()
+
+    await call.message.edit_text(text=outcome, reply_markup=await kb_buttons_in())
 
 
 @router.callback_query(F.data.startswith("delSlctd_"))
@@ -299,12 +293,15 @@ async def process_komplex_add(call: CallbackQuery):
             profit_db.execute(f"DELETE FROM user_{user_id} WHERE id_list = ?", (id_list,))
             connect_profit.commit()
 
-    keyboard = InlineKeyboardBuilder()
-    keyboard.button(text="корзина \U0001F4E5", callback_data="back_to_basket_menu")
-    keyboard.button(text="назад \U000023EA", callback_data="group_buttons")
-    keyboard.adjust(1)
+    async def kb_buttons_in():
+        keyboard = InlineKeyboardBuilder()
+        keyboard.button(text="корзина \U0001F4E5", callback_data="back_to_basket_menu")
+        keyboard.button(text="назад \U000023EA", callback_data="group_buttons")
+        keyboard.adjust(1)
+        return keyboard.as_markup()
+
     list_sequence.clear()
-    await call.message.answer(text=outcome, reply_markup=keyboard.as_markup())
+    await call.message.edit_text(text=outcome, reply_markup=await kb_buttons_in())
 
 
 # ОБРАБОТКА КНОПКИ СТОП-ЛИСТА
@@ -319,11 +316,14 @@ async def process_stop_list(call: CallbackQuery):
 
     message_stop = "\n".join(stop_analyses)
 
-    keyboard = InlineKeyboardBuilder()
-    keyboard.button(text="назад", callback_data="back_to_analyses")
-    keyboard.adjust(1)
+    async def kb_buttons_in():
+        keyboard = InlineKeyboardBuilder()
+        keyboard.button(text="корзина \U0001F4E5", callback_data="back_to_basket_menu")
+        keyboard.button(text="назад \U000023EA", callback_data="back_to_analyses")
+        keyboard.adjust(1)
+        return keyboard.as_markup()
 
-    await call.message.answer(text=message_stop + "\n======================="
-                                                  "\n\u203C\uFE0FАнализы свыше находятся в стоп-листе! "
-                                                  "\n\u203C\uFE0FСкоро запустим их!",
-                              reply_markup=keyboard.as_markup())
+    await call.message.edit_text(text=message_stop + "\n======================="
+                                                     "\n\u203C\uFE0FАнализы свыше находятся в стоп-листе! "
+                                                     "\n\u203C\uFE0FСкоро запустим их!",
+                                 reply_markup=await kb_buttons_in())

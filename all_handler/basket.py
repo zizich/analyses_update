@@ -11,7 +11,7 @@ from core.fsm_engine import States
 from data_base import basket_db, conn_basket, add_db, date_person_db, job_db, cursor_db, date_add_db, midwifery_conn, \
     connect_person_date, pattern_db, all_analysis_db, connect_added, profit_db, connect_profit, connect_pattern, \
     profit_income_db, connect_profit_income, order_done_db, connect_order_done
-from keyboard import delivery_in_basket, gth_after_add_date
+from keyboard import delivery_in_basket, gth_after_add_date, kb_patterns
 from keyboard.kb_basket_who_childs import add_childs_in_basket, childs_in_basket
 from keyboard.kb_basket_who_add import inline_choice
 from keyboard.kb_basket_menu import basket_menu, basket_menu_first
@@ -619,21 +619,8 @@ async def process_delete_date_in_database(call: CallbackQuery):
 @router.callback_query(lambda c: c.data == "pattern")
 async def process_pattern(call: CallbackQuery):
     user_id = call.message.chat.id
-    global pattern_global
 
-    pattern_db.execute(f"""SELECT * FROM user_{user_id}""")
-    keyboard = InlineKeyboardBuilder()
-    try:
-        for i, (date, name, analysis) in enumerate(pattern_db.fetchall(), start=1):
-            keyboard.button(text=f"{i}. {name}", callback_data=f"pat_{date}")
-
-        keyboard.button(text="назад \U000023EA", callback_data="back_to_basket_menu")
-        keyboard.adjust(1)
-        await call.message.answer(text="\U0001F39E Список шаблонов: ", reply_markup=keyboard.as_markup())
-    except TypeError:
-        keyboard.button(text="назад \U000023EA", callback_data="back_to_basket_menu")
-        keyboard.adjust(2)
-        await call.message.answer(text="Шаблонов нет \U0001F4ED", reply_markup=keyboard.as_markup())
+    await call.message.edit_text(text="\U0001F39E Список шаблонов: ", reply_markup=await kb_patterns(user_id))
 
 
 @router.callback_query(lambda c: c.data and c.data.startswith("pat_"))
@@ -663,18 +650,23 @@ async def process_pattern_found(call: CallbackQuery):
             summ_text_pattern += price
             count += 1
     text_pattern_all = "\n".join(collection_text_pattern)
-    # создаем кнопки для добавления, удаления шаблона в корзину и удаления самого шаблона
-    keyboard = InlineKeyboardBuilder()
-    keyboard.button(text="выбрать \u267B", callback_data=f"add_pattern_{pattern_found}")
-    keyboard.button(text="удалить из корзины \U0001F4A2", callback_data=f"clear_pattern_in_basket_{pattern_found}")
-    keyboard.button(text="удалить шаблон \U0001F5D1", callback_data=f"delete_pattern_in_db_{pattern_found}")
-    keyboard.button(text="назад \U000023EA", callback_data="back_to_basket_menu")
-    keyboard.adjust(2)
 
-    await call.message.answer(text=text_pattern_all + "\n========================="
-                                                      f"\nОбщая сумма: {summ_text_pattern} \u20BD"
-                                                      f"\n=========================",
-                              reply_markup=keyboard.as_markup())
+    # создаем кнопки для добавления, удаления шаблона в корзину и удаления самого шаблона
+
+    async def kb_pattern_inline():
+        kb_info_pattern = InlineKeyboardBuilder()
+        kb_info_pattern.button(text="выбрать \u267B", callback_data=f"add_pattern_{pattern_found}")
+        kb_info_pattern.button(text="удалить из корзины \U0001F4A2",
+                               callback_data=f"clear_pattern_in_basket_{pattern_found}")
+        kb_info_pattern.button(text="удалить шаблон \U0001F5D1", callback_data=f"delete_pattern_in_db_{pattern_found}")
+        kb_info_pattern.button(text="назад \U000023EA", callback_data="pattern")
+        kb_info_pattern.adjust(2)
+        return kb_info_pattern.as_markup()
+
+    await call.message.edit_text(text=text_pattern_all + "\n========================="
+                                                         f"\nОбщая сумма: {summ_text_pattern} \u20BD"
+                                                         f"\n=========================",
+                                 reply_markup=await kb_pattern_inline())
 
 
 # ================ ДОБАВИТЬ ШАБЛОН ========================================================================
@@ -699,11 +691,14 @@ async def process_pattern_found(call: CallbackQuery):
                               (id_num, name_analysis.split('(')[0], price, price_other, price_income))
             connect_profit.commit()
 
-    keyboard = InlineKeyboardBuilder()
-    keyboard.button(text="назад \U000023EA", callback_data="back_to_basket_menu")
-    keyboard.adjust(1)
+    async def kb_pattern_inline():
+        kb_info_pattern = InlineKeyboardBuilder()
+        kb_info_pattern.button(text="назад \U000023EA", callback_data="back_to_basket_menu")
+        kb_info_pattern.adjust(1)
+        return kb_info_pattern.as_markup()
 
-    await call.message.answer(text=f"Список анализов добавлен в корзину!", reply_markup=keyboard.as_markup())
+    await call.message.edit_text(text=f"Список анализов добавлен в корзину!",
+                                 reply_markup=await kb_pattern_inline())
 
 
 # ================ УДАЛИТЬ ШАБЛОН В КОРЗИНЕ  =====================================================================
@@ -725,11 +720,13 @@ async def process_pattern_found_delete_in_basket(call: CallbackQuery):
             profit_db.execute(f"DELETE FROM user_{user_id} WHERE id_list = ?""", (id_num,))
             connect_profit.commit()
 
-    keyboard = InlineKeyboardBuilder()
-    keyboard.button(text="назад \U000023EA", callback_data="back_to_basket_menu")
-    keyboard.adjust(1)
+    async def kb_pattern_inline():
+        kb_info_pattern = InlineKeyboardBuilder()
+        kb_info_pattern.button(text="назад \U000023EA", callback_data="back_to_basket_menu")
+        kb_info_pattern.adjust(1)
+        return kb_info_pattern.as_markup()
 
-    await call.message.answer(text=f"Удален из КОРЗИНЫ!", reply_markup=keyboard.as_markup())
+    await call.message.edit_text(text=f"Удален из КОРЗИНЫ!", reply_markup=await kb_pattern_inline())
 
 
 # ================ УДАЛИТЬ ШАБЛОН В БД  ===================================================================
@@ -741,11 +738,14 @@ async def process_pattern_found_delete_in_db(call: CallbackQuery):
     pattern_db.execute(f"""DELETE FROM user_{user_id} WHERE date = ?""", (pattern_delete_name,))
     connect_pattern.commit()
 
-    keyboard = InlineKeyboardBuilder()
-    keyboard.button(text="назад \U000023EA", callback_data="pattern")
-    keyboard.adjust(1)
+    async def kb_pattern_delete():
+        kb_del_pattern = InlineKeyboardBuilder()
+        kb_del_pattern.button(text="назад \U000023EA", callback_data="pattern")
+        kb_del_pattern.adjust(1)
+        return kb_del_pattern.as_markup()
 
-    await call.message.answer(text=f"Шаблон {pattern_delete_name} удалён! ", reply_markup=keyboard.as_markup())
+    await call.message.edit_text(text=f"Шаблон удалён! ",
+                                 reply_markup=await kb_pattern_delete())
 
 
 # ==========================================================================================================
@@ -778,14 +778,17 @@ async def process_edit_basket_analyses_menu(call: CallbackQuery):
     # Присоединяем все сообщения в одну строку с помощью '\n'
     all_messages = "\n".join(messages)
 
-    keyboard = InlineKeyboardBuilder()
-    keyboard.button(text="Изменить список \U0001F4D6", callback_data="edit_analyses_list")
-    keyboard.button(text="Удалить весь список \U00002702 \U0000FE0F", callback_data="delete_analyses_list")
-    keyboard.button(text="назад \U000023EA", callback_data="back_to_basket_menu")
-    keyboard.adjust(1)
-    await call.message.answer(text=all_messages + "\n==========================="
-                                                  "\nРедактировать список анализов: ",
-                              reply_markup=keyboard.as_markup())
+    async def kb_edit_list_analyses():
+        kb_edit_analyses = InlineKeyboardBuilder()
+        kb_edit_analyses.button(text="Изменить список \U0001F4D6", callback_data="edit_analyses_list")
+        kb_edit_analyses.button(text="Удалить весь список \U00002702 \U0000FE0F", callback_data="delete_analyses_list")
+        kb_edit_analyses.button(text="назад \U000023EA", callback_data="back_to_basket_menu")
+        kb_edit_analyses.adjust(1)
+        return kb_edit_analyses.as_markup()
+
+    await call.message.edit_text(text=all_messages + "\n==========================="
+                                                     "\nРедактировать список анализов: ",
+                                 reply_markup=await kb_edit_list_analyses())
 
 
 # ==========================================================================================================
@@ -819,11 +822,11 @@ async def process_edit_list_order_done(message: Message, state: FSMContext):
     add_db.execute(f"DELETE FROM user_{user_id} WHERE id = ?", (key,))
     connect_added.commit()
 
-    keyboard = InlineKeyboardBuilder()
-    keyboard.button(text="назад \U000023EA", callback_data="back_to_basket_menu")
-    keyboard.adjust(1)
+    keyb = InlineKeyboardBuilder()
+    keyb.button(text="назад \U000023EA", callback_data="back_to_basket_menu")
+    keyb.adjust(1)
     await message.answer(text=f"<b>{key}: {name}</b> => Удален!",
-                         reply_markup=keyboard.as_markup())
+                         reply_markup=keyb.as_markup())
     await state.clear()
 
 
@@ -848,36 +851,40 @@ async def process_edit_basket_analyses_menu(call: CallbackQuery):
     profit_db.execute(f"DELETE FROM user_{user_id}")
     connect_profit.commit()
 
-    keyboard = InlineKeyboardBuilder()
-    keyboard.button(text="назад \U000023EA", callback_data="back_to_basket_menu")
-    keyboard.adjust(1)
+    async def delete_list_analyses():
+        keyb = InlineKeyboardBuilder()
+        keyb.button(text="назад \U000023EA", callback_data="back_to_basket_menu")
+        keyb.adjust(1)
+        return keyb.as_markup()
 
-    await call.message.answer(text="Удален весь список анализов!",
-                              reply_markup=keyboard.as_markup())
+    await call.message.edit_text(text="Удален весь список анализов!",
+                                 reply_markup=await delete_list_analyses())
 
 
 # КОММЕНТАРИИ К ЗАЯВКЕ ==========================================================================================
 @router.callback_query(lambda c: c.data == "comment")
 async def process_comment_basket(call: CallbackQuery):
-    keyboard = InlineKeyboardBuilder()
-    keyboard.button(text="оставить комментарии", callback_data="add_comment")
-    keyboard.button(text="назад \U000023EA", callback_data="back_to_basket_menu")
-    keyboard.adjust(1)
+    async def kb_info_comment():
+        keyb_comment = InlineKeyboardBuilder()
+        keyb_comment.button(text="оставить комментарии", callback_data="add_comment")
+        keyb_comment.button(text="назад \U000023EA", callback_data="back_to_basket_menu")
+        keyb_comment.adjust(1)
+        return keyb_comment.as_markup()
 
-    await call.message.answer(text="\U00002757 С целью уточнений о заявке и анализах можете оставить "
-                                   "комментарии мед.персоналу."
-                                   "\n\U00002757Также если, хотите оставить заявку на еще одного человека, "
-                                   "то допишите данные в комментарии по образцу!"
-                                   "\n1. ФИО:"
-                                   "\n2. Дата рождения:"
-                                   "\n3. Анализы:",
-                              reply_markup=keyboard.as_markup())
+    await call.message.edit_text(text="\U00002757 С целью уточнений о заявке и анализах можете оставить "
+                                      "комментарии мед.персоналу."
+                                      "\n\U00002757Также если, хотите оставить заявку на еще одного человека, "
+                                      "то допишите данные в комментарии по образцу!"
+                                      "\n1. ФИО:"
+                                      "\n2. Дата рождения:"
+                                      "\n3. Анализы:",
+                                 reply_markup=await kb_info_comment())
 
 
 @router.callback_query(lambda c: c.data == "add_comment")
 async def process_add_comment_basket(call: CallbackQuery, state: FSMContext):
-    await call.message.answer(text='Введите текст комментарии: ')
     await state.set_state(States.waiting_for_add_comment)
+    await call.message.edit_text(text='Введите текст комментарии: ')
 
 
 # ==========================ОБРАБОТКА СТАТУСА "НАЗАД" ПОСЛЕ РЕДАКТИРОВАНИЯ ФАМИЛИИ 3-ГО РЕБЕНКА==========
@@ -888,12 +895,12 @@ async def process_edit_female_three_done(message: Message, state: FSMContext):
                       (comment, message.from_user.id))
     conn_basket.commit()
 
-    keyboard = InlineKeyboardBuilder()
-    keyboard.button(text="назад \U000023EA", callback_data="back_to_basket_menu")
-    keyboard.adjust(1)
-    await message.answer(text="\U0001F4DD")
+    keyb_back = InlineKeyboardBuilder()
+    keyb_back.button(text="назад \U000023EA", callback_data="back_to_basket_menu")
+    keyb_back.adjust(1)
 
-    await message.answer(text='Сохранено!', reply_markup=keyboard.as_markup())
+    await message.answer(text="\U0001F4DD")
+    await message.answer(text='Сохранено!', reply_markup=keyb_back.as_markup())
     await state.clear()
 
 
@@ -918,17 +925,20 @@ async def process_confirm_the_order(call: CallbackQuery):
         confirm TEXT
     )
     """)
-    keyboard = InlineKeyboardBuilder()
-    keyboard.button(text="Подтвердить заявку \U0000267B \U0000FE0F", callback_data="confirm_button")
-    keyboard.button(text="назад \U000023EA", callback_data="back_to_basket_menu")
-    keyboard.adjust(1)
+
+    async def kb_confirm():
+        kb_conf = InlineKeyboardBuilder()
+        kb_conf.button(text="Подтвердить заявку \U0000267B \U0000FE0F", callback_data="confirm_button")
+        kb_conf.button(text="назад \U000023EA", callback_data="back_to_basket_menu")
+        kb_conf.adjust(1)
+        return kb_conf.as_markup()
 
     await call.answer("\U0000203C \U0000FE0F После подтверждения заявки, невозможно его отредактировать!"
                       "\n\U0000203C \U0000FE0FВсе данные с КОРЗИНЫ исчезнут!"
                       "\n\U0000203C \U0000FE0FПроверьте личные данные, список "
                       "анализов и общую сумму оплаты!", show_alert=True)
-    await call.message.answer(text="Если, данные верны, то можете подтвердить заявку.",
-                              reply_markup=keyboard.as_markup())
+    await call.message.edit_text(text="Если, данные верны, то можете подтвердить заявку.",
+                                 reply_markup=await kb_confirm())
 
 
 # =================================================================================================================

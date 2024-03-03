@@ -9,3 +9,5 @@ from .kb_basket_who_add import inline_choice_back
 from .kb_basket_delivery import delivery_in_basket
 from .kb_basket_goToHome import gth_after_add_date
 from .kb_search_analyses import base_menu_analyses, info_by_analyses, kb_previous_search, kb_search_analyses_after_done
+from .kb_complex_analyses import kb_complex
+from .kb_basket_patterns import kb_patterns
