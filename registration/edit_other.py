@@ -6,21 +6,21 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from core.fsm_engine import States
 from data_base import cursor_db, conn, job_db, basket_db, conn_basket
-from keyboard import edit_people_one
+from keyboard import edit_people_one, choice_city
 
 router = Router(name=__name__)
 
 
-@router.callback_query(F.data in ["edit_people_one", "add_people_one"])
+@router.callback_query(lambda c: c.data in ["edit_people_one", "add_people_one"])
 async def process_edit_people_one(call: CallbackQuery):
-    keyboard = edit_people_one()
-    await call.message.answer(text="Редактировать/Добавить: ", reply_markup=keyboard.as_markup())
+
+    await call.message.edit_text(text="Редактировать/Добавить: ", reply_markup=await edit_people_one())
 
 
 @router.callback_query(F.data == "people_name_one")
 async def process_edit_name_one(call: CallbackQuery, state: FSMContext):
     await state.set_state(States.waiting_for_edit_name_people_one)
-    await call.message.answer(text='Введите имя: ')
+    await call.message.edit_text(text='Введите имя: ')
 
 
 # ==========================ОБРАБОТКА СТАТУСА "НАЗАД" ПОСЛЕ РЕДАКТИРОВАНИЯ ИМЕНИ 1-ГО ЧЕЛОВЕКА========
@@ -40,7 +40,7 @@ async def process_edit_name_one(message: Message, state: FSMContext):
 @router.callback_query(F.data == "people_female_one")
 async def process_edit_female_one(call: CallbackQuery, state: FSMContext):
     await state.set_state(States.waiting_for_edit_female_people_one)
-    await call.message.answer(text='Введите фамилию: ')
+    await call.message.edit_text(text='Введите фамилию: ')
 
 
 # ==========================ОБРАБОТКА СТАТУСА "НАЗАД" ПОСЛЕ РЕДАКТИРОВАНИЯ ФАМИЛИИ 1-ГО ЧЕЛОВЕКА==========
@@ -60,7 +60,7 @@ async def process_edit_female_one_done(message: Message, state: FSMContext):
 @router.callback_query(F.data == "people_patronymic_one")
 async def process_edit_patronymic_one(call: CallbackQuery, state: FSMContext):
     await state.set_state(States.waiting_for_edit_patronymic_people_one)
-    await call.message.answer(text='Введите отчество: ')
+    await call.message.edit_text(text='Введите отчество: ')
 
 
 # ==========================ОБРАБОТКА СТАТУСА "НАЗАД" ПОСЛЕ РЕДАКТИРОВАНИЯ ОТЧЕСТВА 1-ГО ЧЕЛОВЕКА==========
@@ -80,7 +80,7 @@ async def process_edit_patronymic_one_done(message: Message, state: FSMContext):
 @router.callback_query(F.data == "people_birth_day_one")
 async def process_edit_birth_day_one(call: CallbackQuery, state: FSMContext):
     await state.set_state(States.waiting_for_edit_birth_date_people_one)
-    await call.message.answer(text='Введите дату рождения: (дд.мм.гггг) ')
+    await call.message.edit_text(text='Введите дату рождения: (дд.мм.гггг) ')
 
 
 # ==========================ОБРАБОТКА КНОПКИ РЕДАКТИРОВАНИЯ ДАТУ РОЖДЕНИЯ 1-ГО ЧЕЛОВЕКА=======
@@ -101,7 +101,7 @@ async def process_edit_birth_day_one_done(message: Message, state: FSMContext):
 @router.callback_query(F.data == "people_phone_one")
 async def process_edit_birth_day_one(call: CallbackQuery, state: FSMContext):
     await state.set_state(States.waiting_for_edit_phone_people_one)
-    await call.message.answer(text='Введите номер телефона:')
+    await call.message.edit_text(text='Введите номер телефона:')
 
 
 # ==========================ОБРАБОТКА КНОПКИ РЕДАКТИРОВАНИЯ НОМЕРА ТЕЛЕФОНА 1-ГО ЧЕЛОВЕКА=======
@@ -122,7 +122,7 @@ async def process_edit_birth_day_one_done(message: Message, state: FSMContext):
 @router.callback_query(F.data == "people_email_one")
 async def process_edit_birth_day_one(call: CallbackQuery, state: FSMContext):
     await state.set_state(States.waiting_for_edit_email_people_one)
-    await call.message.answer(text='Введите email: (info@info.in)')
+    await call.message.edit_text(text='Введите email: (info@info.in)')
 
 
 # ==========================ОБРАБОТКА КНОПКИ РЕДАКТИРОВАНИЯ e-mail 1-ГО ЧЕЛОВЕКА=======
@@ -141,13 +141,8 @@ async def process_edit_birth_day_one_done(message: Message, state: FSMContext):
 # изменить номер адрес 1-ГО ЧЕЛОВЕКА
 @router.callback_query(F.data == "city_people_one")
 async def process_city_people_one(call: CallbackQuery):
-    keyboard = InlineKeyboardBuilder()
-
-    job_db.execute("""SELECT * FROM services""")
-    for i, (city, sampling, out_pay, address, phone, bank, all_sale) in enumerate(job_db.fetchall(), start=1):
-        keyboard.button(text=f"{city} \u23E9", callback_data=f"cityOtherAdd_{city}")
-    keyboard.adjust(1)
-    await call.message.answer(text="\U0001F3D8 Выберите населенный пункт:", reply_markup=keyboard.as_markup())
+    await call.message.edit_text(text="\U0001F3D8 Выберите населенный пункт:",
+                                 reply_markup=await choice_city())
 
 
 @router.callback_query(F.data.startswith("cityOtherAdd_"))
@@ -183,7 +178,7 @@ async def process_add_city_people_one(call: CallbackQuery):
 @router.callback_query(F.data == "people_adress_one")
 async def process_edit_birth_day_one(call: CallbackQuery, state: FSMContext):
     await state.set_state(States.waiting_for_edit_address_people_one)
-    await call.message.answer(text='Введите адрес забора биоматериалов: ')
+    await call.message.edit_text(text='Введите адрес забора биоматериалов: ')
 
 
 # ==========================ОБРАБОТКА КНОПКИ РЕДАКТИРОВАНИЯ АДРЕСА 1-ГО ЧЕЛОВЕКА=======
@@ -210,4 +205,4 @@ async def process_delete_people_one(call: CallbackQuery):
         cursor_db.execute(f"""UPDATE users SET {table} = NULL WHERE user_id = ? """, (user_id,))
         conn.commit()
 
-    await call.message.answer(text="удален!")
+    await call.message.edit_text(text="удален!")

@@ -18,10 +18,10 @@ router = Router()
 @router.message(F.text.in_('\U0001F4D7 Обратная связь'))
 async def process_feedback(message: Message):
     keyboard = InlineKeyboardBuilder()
-    keyboard.button(text="КАК ЗАРЕГИСТРИРОВАТЬСЯ? \U000023E9", callback_data="how_to_register")
-    keyboard.button(text="АНАЛИЗЫ, АКЦИИ \U000023E9", callback_data="how_to_selected_analyses")
-    keyboard.button(text="РАБОТА С КОРЗИНОЙ \U000023E9", callback_data="how_to_shop")
-    keyboard.button(text="ЗАЯВКИ, АРХИВ \U000023E9", callback_data="any_process")
+    keyboard.button(text="КАК ЗАРЕГИСТРИРОВАТЬСЯ? \U000023E9", callback_data="fb_how_to_register")
+    keyboard.button(text="АНАЛИЗЫ, АКЦИИ \U000023E9", callback_data="fb_how_to_selected_analyses")
+    keyboard.button(text="РАБОТА С КОРЗИНОЙ \U000023E9", callback_data="fb_how_to_shop")
+    keyboard.button(text="ЗАЯВКИ, АРХИВ \U000023E9", callback_data="fb_any_process")
     keyboard.button(text="НЕТУ РЕЗУЛЬТАТОВ \U000023E9", callback_data="not_result")
     keyboard.adjust(1)
     await message.answer(text="\U0001F4CD В этом разделе не оформляется заявка, не производится поиск анализов!"
@@ -37,10 +37,10 @@ async def process_feedback(message: Message):
 @router.callback_query(F.data == "back_to_help")
 async def process_back_to_help(call: CallbackQuery):
     keyboard = InlineKeyboardBuilder()
-    keyboard.button(text="КАК ЗАРЕГИСТРИРОВАТЬСЯ? \U000023E9", callback_data="how_to_register")
-    keyboard.button(text="АНАЛИЗЫ, АКЦИИ \U000023E9", callback_data="how_to_selected_analyses")
-    keyboard.button(text="РАБОТА С КОРЗИНОЙ \U000023E9", callback_data="how_to_shop")
-    keyboard.button(text="ЗАЯВКИ, АРХИВ \U000023E9", callback_data="any_process")
+    keyboard.button(text="КАК ЗАРЕГИСТРИРОВАТЬСЯ? \U000023E9", callback_data="fb_how_to_register")
+    keyboard.button(text="АНАЛИЗЫ, АКЦИИ \U000023E9", callback_data="fb_how_to_selected_analyses")
+    keyboard.button(text="РАБОТА С КОРЗИНОЙ \U000023E9", callback_data="fb_how_to_shop")
+    keyboard.button(text="ЗАЯВКИ, АРХИВ \U000023E9", callback_data="fb_any_process")
     keyboard.button(text="НЕТУ РЕЗУЛЬТАТОВ \U000023E9", callback_data="not_result")
     keyboard.adjust(1)
     await call.message.edit_text(text="Если, у Вас возникли вопросы и/или трудности по "
@@ -129,38 +129,36 @@ async def process_not_result_info(call: CallbackQuery):
 
 
 # РАБОТА С КНОПКАМИ ПОМОЩИ
-@router.callback_query(F.data in ["how_to_register", "how_to_selected_analyses",
-                                            "how_to_shop", "any_process"])
+@router.callback_query(F.data.startswith("fb_"))
 async def process_help_buttons(call: CallbackQuery):
     video_path = ""
     if system_info == "Windows":
-        if call.data == "how_to_register":
+        if call.data.split('fb_')[1] == "how_to_register":
             # Путь к вашему видео
             video_path = 'D:/Git/analyses/manual/Register/reg_1.mp4'
-        elif call.data == "how_to_selected_analyses":
+        elif call.data.split('fb_')[1] == "how_to_selected_analyses":
             video_path = 'D:/Git/analyses/manual/Register/reg_2.mp4'
-        elif call.data == "how_to_selected_analyses":
+        elif call.data.split('fb_')[1] == "how_to_selected_analyses":
             video_path = 'D:/Git/analyses/manual/Register/reg_3.mp4'
-        elif call.data == "how_to_selected_analyses":
+        elif call.data.split('fb_')[1] == "how_to_selected_analyses":
             video_path = 'D:/Git/analyses/manual/Register/reg_4.mp4'
     elif system_info == "Linux":
-        if call.data == "how_to_register":
+        if call.data.split('fb_')[1] == "how_to_register":
             # Путь к вашему видео
             video_path = '/root/Analyses/manual/Register/reg_1.mp4'
-        elif call.data == "how_to_selected_analyses":
+        elif call.data.split('fb_')[1] == "how_to_selected_analyses":
             video_path = '/root/Analyses/manual/Register/reg_2.mp4'
-        elif call.data == "how_to_selected_analyses":
+        elif call.data.split('fb_')[1] == "how_to_selected_analyses":
             video_path = '/root/Analyses/manual/Register/reg_3.mp4'
-        elif call.data == "how_to_selected_analyses":
+        elif call.data.split('fb_')[1] == "how_to_selected_analyses":
             video_path = '/root/Analyses/manual/Register/reg_4.mp4'
 
     # Проверяем существование видео-файла
     if not os.path.exists(video_path):
-        await call.message.answer(text="Видео-инструкция на этапе разработки/оформления. "
-                                       "Обратитесь к Администратору группы!")
-        return
-
-    # Отправляем видео пользователю с обратным отсчетом
-    await call.message.answer(text="Началась загрузка видео.")
-    await call.message.answer_video(video=FSInputFile(os.path.abspath(video_path)),
-                                    caption="Загружено")
+        await call.answer("Инструкция на этапе разработки/оформления. "
+                          "Обратитесь к Администратору группы!", show_alert=True)
+    else:
+        # Отправляем видео пользователю с обратным отсчетом
+        await call.answer("Началась загрузка видео....")
+        await call.message.answer_video(video=FSInputFile(os.path.abspath(video_path)),
+                                        caption="Загружено")

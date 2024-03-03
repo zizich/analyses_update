@@ -97,7 +97,7 @@ async def process_go_to_sale_analyses(call: CallbackQuery):
 
 
 # ДОБАВИТЬ ИЛИ УДАЛИТЬ ВЫБРАННУЮ АКЦИЮ
-@router.callback_query(F.data in ["add_sale", "delete_sale"])
+@router.callback_query(F.data == ["add_sale", "delete_sale"])
 async def process_go_to_sale_add_or_delete(call: CallbackQuery):
     global transfer_sale
     user_id = call.message.chat.id

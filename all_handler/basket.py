@@ -2,15 +2,19 @@ import aiogram.exceptions
 from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
 
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+import keyboard.kb_basket_who_add
 from core.any_process import peoples_collection
 from core.fsm_engine import States
 from data_base import basket_db, conn_basket, add_db, date_person_db, job_db, cursor_db, date_add_db, midwifery_conn, \
     connect_person_date, pattern_db, all_analysis_db, connect_added, profit_db, connect_profit, connect_pattern, \
     profit_income_db, connect_profit_income, order_done_db, connect_order_done
-from keyboard.kb_basket_menu import basket_menu
+from keyboard import delivery_in_basket, gth_after_add_date
+from keyboard.kb_basket_who_childs import add_childs_in_basket, childs_in_basket
+from keyboard.kb_basket_who_add import inline_choice
+from keyboard.kb_basket_menu import basket_menu, basket_menu_first
 
 router = Router(name=__name__)
 
@@ -69,7 +73,6 @@ async def process_basket(message: Message):
         # Присоединяем все сообщения в одну строку с помощью '\n'.json
         all_messages = "\n".join(messages)
         # ===============================================================================================
-        keyboard = basket_menu()  # кнопки инлайн для КОРЗИНЫ
 
         # ================================================================================================
         # подключение к БД date_add_db для вывода в консоль выбранную ДАТУ
@@ -149,7 +152,7 @@ async def process_basket(message: Message):
                                                  f"\n<b>Оплата: </b>переводом на"
                                                  f"\n\U0000203C{admin_bank}\U0000203C<b>{admin_phone}</b>, "
                                                  f"только после взятия биометариала",
-                             reply_markup=keyboard.as_markup())
+                             reply_markup=basket_menu_first())
 
     except aiogram.exceptions.TelegramBadRequest:
         await message.answer(text="Корзина пуста!")
@@ -161,16 +164,10 @@ async def process_basket(message: Message):
 #
 #
 # ==========================================================================================================
-@router.callback_query(F.data == "who_will_order")
+@router.callback_query(lambda c: c.data == "who_will_order")
 async def process_who_will_order(call: CallbackQuery):
-    keyboard = InlineKeyboardBuilder()
-    keyboard.button(text="Мне \U0001F64B", callback_data="my_order_button")
-    keyboard.button(text="Детям \U0000200D \U0001F467 \U0000200D \U0001F466", callback_data="childs_order_button")
-    keyboard.button(text="Другим \U0001F465", callback_data="others_order_button")
-    keyboard.button(text="назад \U000023EA", callback_data="back_to_basket_menu")
-    keyboard.adjust(1)
-
-    await call.message.answer(text="Кому Вы будете оформлять заявку?", reply_markup=keyboard.as_markup())
+    await call.message.edit_text("Кому Вы будете оформлять заявку?",
+                                 reply_markup=await inline_choice())
 
 
 # ==========================================================================================================
@@ -179,21 +176,14 @@ async def process_who_will_order(call: CallbackQuery):
 #           8.1.1 = > КНОПКА "МНЕ"
 #           8.1.2 = > КНОПКА ДЕТЯМ
 # ==========================================================================================================
-@router.callback_query(F.data == "childs_order_button")
+@router.callback_query(lambda c: c.data == "childs_order_button")
 async def process_buy_for_child(call: CallbackQuery):
-    keyboard = InlineKeyboardBuilder()
-    keyboard.button(text="1-му ребенку", callback_data="first_child_add_basket")
-    keyboard.button(text="2-му ребенку", callback_data="second_child_add_basket")
-    keyboard.button(text="3-му ребенку", callback_data="third_child_add_basket")
-    keyboard.button(text="4-му ребенку", callback_data="four_child_add_basket")
-    keyboard.button(text="назад \U000023EA", callback_data="who_will_order")
-    keyboard.adjust(1)
-
-    await call.message.answer(text="Выберите для какого ребенка: ", reply_markup=keyboard.as_markup())
+    await call.message.edit_text(text="Выберите для какого ребенка: ",
+                                 reply_markup=await add_childs_in_basket())
 
 
 # ОБРАБОТКА КНОПКИ НАЗАД от ВЫБОРОВ ЛЮДЕЙ В КОРЗИНУ - ОСНОВНОЕ МЕНЮ =====================================
-@router.callback_query(F.data in peoples_collection)
+@router.callback_query(lambda c: c.data in peoples_collection)
 async def process_back_to_basket_at_who_will_order(call: CallbackQuery):
     user_id = call.message.chat.id
     global transfer_date
@@ -239,7 +229,7 @@ async def process_back_to_basket_at_who_will_order(call: CallbackQuery):
     # if isinstance(people_one, int):
     #     await bot.delete_message(chat_id=call.message.chat.id, message_id=people_one)
     # =================================================================================================
-    keyboard = basket_menu()  # кнопки инлайн для КОРЗИНЫ
+
     # =================================================================================================
     # вывод из БД списка анализов по порядковому номеру
     add_db.execute(f"SELECT * FROM user_{user_id}")
@@ -354,11 +344,8 @@ async def process_back_to_basket_at_who_will_order(call: CallbackQuery):
                 except aiogram.exceptions.TelegramNotFound:
                     await call.message.answer(text="Корзина пуста!")
             else:
-                keyboard_child = InlineKeyboardBuilder()
-                keyboard_child.button(text="назад \U000023EA", callback_data="childs_order_button")
-                keyboard_child.adjust(1)
-                await call.message.answer(text="Данных о наличии ребенка - нет!",
-                                          reply_markup=keyboard_child.as_markup())
+                await call.message.edit_text(text="Данных о наличии ребенка - нет!",
+                                             reply_markup=await childs_in_basket())
         elif call.data == "others_order_button":
             cursor_db.execute("""SELECT user_id, others_name_one, others_female_one, others_patronymic_one, 
                             others_birth_date_one, others_phone_one, others_email_one, others_address_one, 
@@ -387,11 +374,8 @@ async def process_back_to_basket_at_who_will_order(call: CallbackQuery):
                 except aiogram.exceptions.TelegramNotFound:
                     await call.message.answer(text="Корзина пуста!")
             else:
-                keyboard_others = InlineKeyboardBuilder()
-                keyboard_others.button(text="назад \U000023EA", callback_data="who_will_order")
-                keyboard_others.adjust(1)
-                await call.message.answer(text="Данные на другого человека не заполнены!",
-                                          reply_markup=keyboard_others.as_markup())
+                await call.message.edit_text(text="Данные на другого человека не заполнены!",
+                                             reply_markup=await keyboard.inline_choice_back())
 
         # для логики: если, пользователь выбирает самообращение то на консоль выходит адрес пункта
         your_self = ""
@@ -407,27 +391,27 @@ async def process_back_to_basket_at_who_will_order(call: CallbackQuery):
         if city is None:
             city = "\U0001F3D8"
         if len(all_profile) > 10:
-            await call.message.answer(text=all_messages + "\n<b>===========================</b>"
-                                                          f"\n<b>Сумма анализа:</b> {all_prices_back_to_basket} р."
-                                                          f"\n<b>Забор биоматериала:</b> {sampling} р."
-                                                          f"\n<b>Выезд:</b> {check_out_at} р."
-                                                          f"\n<b>Общая сумма:</b> "
-                                                          f"{all_prices_back_to_basket + check_out_at + sampling} р."
-                                                          f"\n<b>===========================</b>"
-                                                          f"\n<b>Кому:</b>"
-                                                          f"\n{all_profile}"
-                                                          "\n<b>===========================</b>"
-                                                          f"\n<b>{delivery}</b>"
-                                                          f"\n<b>Дата:</b> {date_end.split('>>')[0]}"
-                                                          f"\n<b>===========================</b>"
-                                                          f"\n<b>Город</b>: {city} {your_self}"
-                                                          f"\n<b>===========================</b>"
-                                                          f"\n<b>Комментарии:</b> {comment}"
-                                                          f"\n<b>===========================</b>"
-                                                          f"\n<b>Оплата: </b>переводом на"
-                                                          f"\n\U0000203C{admin_bank}\U0000203C<b>{admin_phone}</b>, "
-                                                          f"только после взятия биометариала",
-                                      reply_markup=keyboard.as_markup())
+            await call.message.edit_text(text=all_messages + "\n<b>===========================</b>"
+                                                             f"\n<b>Сумма анализа:</b> {all_prices_back_to_basket} р."
+                                                             f"\n<b>Забор биоматериала:</b> {sampling} р."
+                                                             f"\n<b>Выезд:</b> {check_out_at} р."
+                                                             f"\n<b>Общая сумма:</b> "
+                                                             f"{all_prices_back_to_basket + check_out_at + sampling} р."
+                                                             f"\n<b>===========================</b>"
+                                                             f"\n<b>Кому:</b>"
+                                                             f"\n{all_profile}"
+                                                             "\n<b>===========================</b>"
+                                                             f"\n<b>{delivery}</b>"
+                                                             f"\n<b>Дата:</b> {date_end.split('>>')[0]}"
+                                                             f"\n<b>===========================</b>"
+                                                             f"\n<b>Город</b>: {city} {your_self}"
+                                                             f"\n<b>===========================</b>"
+                                                             f"\n<b>Комментарии:</b> {comment}"
+                                                             f"\n<b>===========================</b>"
+                                                             f"\n<b>Оплата: </b>переводом на"
+                                                             f"\n\U0000203C{admin_bank}\U0000203C<b>{admin_phone}</b>, "
+                                                             f"только после взятия биометариала",
+                                         reply_markup=await basket_menu())
         else:
             pass
     except aiogram.exceptions.TelegramNotFound:
@@ -435,7 +419,7 @@ async def process_back_to_basket_at_who_will_order(call: CallbackQuery):
 
 
 # ОБРАБОТКА КНОПКИ ВЫБОРА ВЫЗОВА НА ДОМ ИЛИ САМООБРАЩЕНИЯ =======================================================
-@router.callback_query(F.data == "exit_or_self_conversion")
+@router.callback_query(lambda c: c.data == "exit_or_self_conversion")
 async def process_exit_or_self_conversion(call: CallbackQuery):
     user_id = call.message.chat.id
 
@@ -443,32 +427,21 @@ async def process_exit_or_self_conversion(call: CallbackQuery):
         city = basket_db.execute("""SELECT city FROM users WHERE user_id = ?""", (user_id,)).fetchone()[0]
 
         address = job_db.execute("SELECT address FROM services WHERE city = ?", (city,)).fetchone()[0]
-        keyboard = InlineKeyboardBuilder()
-        keyboard.button(text="\U0001F3E0 вызов на дом", callback_data="go_to_home")
-        keyboard.button(text="\U0001F3C3 самообращение", callback_data="go_to_medical")
-        keyboard.button(text="назад \U000023EA", callback_data="back_to_basket_menu")
-        keyboard.adjust(1)
 
-        await call.message.answer(text="\u203C\uFE0FПри вызове на дом \U0001F3E0, в выбранную дату, мы "
-                                       f"приедем к адресу, указанную в заявке!"
-                                       f"\n\u203C\uFE0FПри самообращении, ждем Вас по адресу:"
-                                       f"\n{city}, {address}", reply_markup=keyboard.as_markup())
+        await call.message.edit_text(text="\u203C\uFE0FПри вызове на дом \U0001F3E0, в выбранную дату, мы "
+                                          f"приедем к адресу, указанную в заявке!"
+                                          f"\n\u203C\uFE0FПри самообращении, ждем Вас по адресу:"
+                                          f"\n{city}, {address}", reply_markup=await delivery_in_basket())
     except TypeError:
-
-        keyboard = InlineKeyboardBuilder()
-        keyboard.button(text="\U0001F3E0 вызов на дом", callback_data="go_to_home")
-        keyboard.button(text="\U0001F3C3 самообращение", callback_data="go_to_medical")
-        keyboard.button(text="назад \U000023EA", callback_data="back_to_basket_menu")
-        keyboard.adjust(1)
 
         await call.message.answer(text="\u203C\uFE0FПри вызове на дом \U0001F3E0, в выбранную дату, мы "
                                        f"приедем к адресу, указанную в заявке!"
                                        f"\nПо данному населенному пункту логистика не сформирована",
-                                  reply_markup=keyboard.as_markup())
+                                  reply_markup=await delivery_in_basket())
 
 
 # показать все даты по вызову на дом ========================================================================
-@router.callback_query(F.data in "go_to_home")
+@router.callback_query(F.data == "go_to_home")
 async def process_exit_or_self(call: CallbackQuery):
     global transfer_date
     user_id = call.message.chat.id
@@ -476,7 +449,6 @@ async def process_exit_or_self(call: CallbackQuery):
     basket_db.execute("""UPDATE users SET delivery = ? WHERE user_id = ?""", ("вызов на дом", user_id))
     conn_basket.commit()
 
-    keyboard = InlineKeyboardBuilder()
     city = basket_db.execute("""SELECT city FROM users WHERE user_id = ?""", (user_id,)).fetchone()[0]
 
     # Выносим из БД все даты выбранные
@@ -485,44 +457,46 @@ async def process_exit_or_self(call: CallbackQuery):
     try:
         for i, (date_found) in enumerate(date_in, start=1):
             if date_found:  # сравниваем есть ли отмеченная дата у данного пользователя
-                # времени кнопки-даты с БД добавляются в коллекцию
                 keyboard_after_add_date = InlineKeyboardBuilder()
-                keyboard_after_add_date.button(text="удалить дату \U00002702\U0000FE0F\U0001F564",
-                                               callback_data=f"delAddDate{transfer_date}")
-                keyboard_after_add_date.button(text="назад \U000023EA", callback_data="back_to_basket_menu")
-                keyboard_after_add_date.adjust(1)
 
+                # создал отдельная функция для клавиатур при вызове на дом gth (go_to_home)
+                kb = gth_after_add_date(keyboard_after_add_date, date_found)
+
+                # времени кнопки-даты с БД добавляются в коллекцию
                 if len(transfer_date) > 30:
                     text_delivery = "самообращение"
                 else:
                     text_delivery = "вызов на дом"
-                await call.message.answer(text="\u2705 Вы записаны на "
-                                               "\n{} \U000027A1\U0000FE0F: {}".format(text_delivery,
-                                                                                      transfer_date.split("_")[0]),
-                                          reply_markup=keyboard_after_add_date.as_markup())
+                await call.message.edit_text(text="\u2705 Вы записаны на "
+                                                  "\n{} \U000027A1\U0000FE0F: {}".format(text_delivery,
+                                                                                         transfer_date.split("_")[0]),
+                                             reply_markup=await kb)
 
                 break
 
     except TypeError:
         date_add_db.execute("""SELECT * FROM nurse WHERE city = ?""", (city,))
         dateAdd = date_add_db.fetchall()
-
+        keyboard_gth = InlineKeyboardBuilder()
         try:
             for i, (date, done, city, delivery) in enumerate(dateAdd, start=1):
                 if delivery in "вызов на дом" and done in "\U0001F4CC":
-                    keyboard.button(text=f"{date.split('_')[0]} {done}", callback_data=f"unique_{date}")
+                    keyboard_gth.button(text=f"{date.split('_')[0]} {done}", callback_data=f"unique_{date}")
 
-            keyboard.button(text="назад \U000023EA", callback_data="exit_or_self_conversion")
-            keyboard.adjust(1)
+            keyboard_gth.button(text="назад \U000023EA", callback_data="exit_or_self_conversion")
+            keyboard_gth.adjust(1)
 
             await call.message.answer(text=f"<b>Вызов на дом \U0001F691</b>"
-                                           f"\nВыберите время \U00002935\U0000FE0F", reply_markup=keyboard.as_markup())
+                                           f"\nВыберите время \U00002935\U0000FE0F",
+                                      reply_markup=keyboard_gth.as_markup())
         except TypeError:
-            await call.message.answer(text=f"Свободных дат нет", reply_markup=keyboard.as_markup())
+            keyboard_gth.button(text="назад \U000023EA", callback_data="exit_or_self_conversion")
+            keyboard_gth.adjust(1)
+            await call.message.answer(text=f"Свободных дат нет", reply_markup=keyboard_gth.as_markup())
 
 
 # показать все даты по самообращению ========================================================================
-@router.callback_query(F.data in "go_to_medical")
+@router.callback_query(F.data == "go_to_medical")  # gtm (go_to_medical)
 async def process_exit_or_self(call: CallbackQuery):
     global transfer_date
     user_id = call.message.chat.id
@@ -530,7 +504,6 @@ async def process_exit_or_self(call: CallbackQuery):
     basket_db.execute("""UPDATE users SET delivery = ? WHERE user_id = ?""", ("самообращение", user_id))
     conn_basket.commit()
 
-    keyboard = InlineKeyboardBuilder()
     city = basket_db.execute("""SELECT city FROM users WHERE user_id = ?""", (user_id,)).fetchone()[0]
 
     # Выносим из БД все даты выбранные
@@ -560,26 +533,28 @@ async def process_exit_or_self(call: CallbackQuery):
         date_add_db.execute("""SELECT * FROM nurse WHERE city = ?""", (city,))
         dateAdd = date_add_db.fetchall()
 
+        keyboard_gtm = InlineKeyboardBuilder()
         try:
             for i, (date, done, city, delivery) in enumerate(dateAdd, start=1):
                 if delivery in "самообращение" and done == "\U0001F4CC":
-                    keyboard.button(text=f"{date.split('_')[0]} {done}",
-                                    callback_data=f"unique_{date}")
+                    keyboard_gtm.button(text=f"{date.split('_')[0]} {done}",
+                                        callback_data=f"unique_{date}")
 
-            keyboard.button(text="назад \U000023EA", callback_data="exit_or_self_conversion")
-            keyboard.adjust(1)
+            keyboard_gtm.button(text="назад \U000023EA", callback_data="exit_or_self_conversion")
+            keyboard_gtm.adjust(1)
 
             await call.message.answer(text=f"<b>Самообращение \U0001F3E5</b>"
-                                           f"\nВыберите время \U00002935\U0000FE0F", reply_markup=keyboard.as_markup())
+                                           f"\nВыберите время \U00002935\U0000FE0F",
+                                      reply_markup=keyboard_gtm.as_markup())
         except TypeError:
-            await call.message.answer(text=f"Свободных дат нет", reply_markup=keyboard.as_markup())
+            await call.message.answer(text=f"Свободных дат нет", reply_markup=keyboard_gtm.as_markup())
 
 
 # ==========================================================================================================
 # ПРИСВОЕНИЕ ДАТЫ
 #
 # ==========================================================================================================
-@router.callback_query(F.data.startswith('unique_'))
+@router.callback_query(lambda c: c.data and c.data.startswith('unique_'))
 async def process_order_date_with_midwifery(call: CallbackQuery):
     global transfer_date
     user_id = call.message.chat.id
@@ -617,7 +592,7 @@ async def process_order_date_with_midwifery(call: CallbackQuery):
 #
 # ==========================================================================================================
 # Дописать то, что при обработки этой callback должны быть внесены изменения в БД
-@router.callback_query(F.data.startswith("delAddDate"))
+@router.callback_query(lambda c: c.data.startswith("delAddDate"))
 async def process_delete_date_in_database(call: CallbackQuery):
     global transfer_date
     user_id = call.message.chat.id
@@ -641,7 +616,7 @@ async def process_delete_date_in_database(call: CallbackQuery):
 
 
 # =========================== ШАБЛОНЫ =================================================================
-@router.callback_query(F.data == "pattern")
+@router.callback_query(lambda c: c.data == "pattern")
 async def process_pattern(call: CallbackQuery):
     user_id = call.message.chat.id
     global pattern_global
@@ -661,7 +636,7 @@ async def process_pattern(call: CallbackQuery):
         await call.message.answer(text="Шаблонов нет \U0001F4ED", reply_markup=keyboard.as_markup())
 
 
-@router.callback_query(F.data.startswith("pat_"))
+@router.callback_query(lambda c: c.data and c.data.startswith("pat_"))
 async def process_pattern_found(call: CallbackQuery):
     user_id = call.message.chat.id
 
@@ -703,7 +678,7 @@ async def process_pattern_found(call: CallbackQuery):
 
 
 # ================ ДОБАВИТЬ ШАБЛОН ========================================================================
-@router.callback_query(F.data.startswith("add_pattern_"))
+@router.callback_query(lambda c: c.data.startswith("add_pattern_"))
 async def process_pattern_found(call: CallbackQuery):
     user_id = call.message.chat.id
 
@@ -732,7 +707,7 @@ async def process_pattern_found(call: CallbackQuery):
 
 
 # ================ УДАЛИТЬ ШАБЛОН В КОРЗИНЕ  =====================================================================
-@router.callback_query(F.data.startswith("clear_pattern_in_basket_"))
+@router.callback_query(lambda c: c.data and c.data.startswith("clear_pattern_in_basket_"))
 async def process_pattern_found_delete_in_basket(call: CallbackQuery):
     user_id = call.message.chat.id
 
@@ -758,7 +733,7 @@ async def process_pattern_found_delete_in_basket(call: CallbackQuery):
 
 
 # ================ УДАЛИТЬ ШАБЛОН В БД  ===================================================================
-@router.callback_query(F.data.startswith("delete_pattern_in_db_"))
+@router.callback_query(lambda c: c.data and c.data.startswith("delete_pattern_in_db_"))
 async def process_pattern_found_delete_in_db(call: CallbackQuery):
     user_id = call.message.chat.id
     pattern_delete_name = call.data.split("delete_pattern_in_db_")[1]
@@ -786,7 +761,7 @@ async def process_pattern_found_delete_in_db(call: CallbackQuery):
 #
 # ==========================================================================================================
 
-@router.callback_query(F.data == "edit_list_order")
+@router.callback_query(lambda c: c.data == "edit_list_order")
 async def process_edit_basket_analyses_menu(call: CallbackQuery):
     user_id = call.message.chat.id
     messages = []
@@ -827,7 +802,7 @@ async def process_edit_basket_analyses_menu(call: CallbackQuery):
 #
 # ==========================================================================================================
 
-@router.callback_query(F.data == "edit_analyses_list")
+@router.callback_query(lambda c: c.data == "edit_analyses_list")
 async def process_edit_list_order(call: CallbackQuery, state: FSMContext):
     await call.message.answer(text='\U0001F522 Введите КОД-анализа, которого хотите удалить:')
 
@@ -865,7 +840,7 @@ async def process_edit_list_order_done(message: Message, state: FSMContext):
 #       8.4.1 = > РЕДАКТИРОВАТЬ СПИСКО АНАЛИЗОВ УДАЛЯЯ ПО ОДНОМУ АНАЛИЗУ
 #       8.4.2 = > УДАЛИТЬ ВЕСЬ СПИСОК АНАЛИЗОВ
 # ==========================================================================================================
-@router.callback_query(F.data == "delete_analyses_list")
+@router.callback_query(lambda c: c.data == "delete_analyses_list")
 async def process_edit_basket_analyses_menu(call: CallbackQuery):
     user_id = call.message.chat.id
     add_db.execute(f"DELETE FROM user_{user_id}")
@@ -882,7 +857,7 @@ async def process_edit_basket_analyses_menu(call: CallbackQuery):
 
 
 # КОММЕНТАРИИ К ЗАЯВКЕ ==========================================================================================
-@router.callback_query(F.data == "comment")
+@router.callback_query(lambda c: c.data == "comment")
 async def process_comment_basket(call: CallbackQuery):
     keyboard = InlineKeyboardBuilder()
     keyboard.button(text="оставить комментарии", callback_data="add_comment")
@@ -899,7 +874,7 @@ async def process_comment_basket(call: CallbackQuery):
                               reply_markup=keyboard.as_markup())
 
 
-@router.callback_query(F.data == "add_comment")
+@router.callback_query(lambda c: c.data == "add_comment")
 async def process_add_comment_basket(call: CallbackQuery, state: FSMContext):
     await call.message.answer(text='Введите текст комментарии: ')
     await state.set_state(States.waiting_for_add_comment)
@@ -926,7 +901,7 @@ async def process_edit_female_three_done(message: Message, state: FSMContext):
 #                                               ПОДТВЕРЖДЕНИЕ ЗАЯВКИ
 # ================================================================================================================
 
-@router.callback_query(F.data == "confirm_the_order")
+@router.callback_query(lambda c: c.data == "confirm_the_order")
 async def process_confirm_the_order(call: CallbackQuery):
     user_id = call.message.chat.id
     basket_db.execute(f"""
@@ -947,10 +922,12 @@ async def process_confirm_the_order(call: CallbackQuery):
     keyboard.button(text="Подтвердить заявку \U0000267B \U0000FE0F", callback_data="confirm_button")
     keyboard.button(text="назад \U000023EA", callback_data="back_to_basket_menu")
     keyboard.adjust(1)
-    await call.message.answer(text="\U0000203C \U0000FE0F После подтверждения заявки, невозможно его отредактировать!"
-                                   "\n\U0000203C \U0000FE0FВсе данные с КОРЗИНЫ исчезнут!"
-                                   "\n\U0000203C \U0000FE0FПроверьте личные данные, список "
-                                   "анализов и общую сумму оплаты!",
+
+    await call.answer("\U0000203C \U0000FE0F После подтверждения заявки, невозможно его отредактировать!"
+                      "\n\U0000203C \U0000FE0FВсе данные с КОРЗИНЫ исчезнут!"
+                      "\n\U0000203C \U0000FE0FПроверьте личные данные, список "
+                      "анализов и общую сумму оплаты!", show_alert=True)
+    await call.message.answer(text="Если, данные верны, то можете подтвердить заявку.",
                               reply_markup=keyboard.as_markup())
 
 
@@ -958,7 +935,7 @@ async def process_confirm_the_order(call: CallbackQuery):
 #                                     обработка кнопки ПОДТВЕРЖДЕНИЯ
 # =================================================================================================================
 
-@router.callback_query(F.data == "confirm_button")
+@router.callback_query(lambda c: c.data == "confirm_button")
 async def process_confirm_basket(call: CallbackQuery):
     user_id = call.message.chat.id
 
@@ -1128,9 +1105,12 @@ async def process_confirm_basket(call: CallbackQuery):
                                                                               f"{result_date}_{id_midwiferys}"))
         midwifery_conn.commit()
 
+        await call.answer("Заявка успешно оформлена! "
+                          "\nВаши данные переданы в ЗАЯВКИ \U000027A1"
+                          "\nСписок заявок закреплена значком \U0000274C, "
+                          "\nПри подтверждении заявки медсестрой "
+                          "\nзначок сменится на \u2705", show_alert=True)
         await call.message.answer(text="\U0001F389")
-        await call.message.answer(text="Заявка успешно оформлена! "
-                                       "\nВаши данные переданы в ЗАЯВКИ \U000027A1"
-                                       "\nСписок заявок закреплена значком \U0000274C, "
-                                       "\nПри подтверждении заявки медсестрой "
-                                       "\nзначок сменится на \u2705")
+        await call.message.answer_photo(
+            photo="AgACAgIAAxkBAAJaUmXkgIypNZezMXiIP8b4-kcYPsQzAAIV3zEbKoshS6JQCPwGmMncAQADAgADeAADNAQ"
+        )
