@@ -1,6 +1,6 @@
 import re
 
-from aiogram import Router
+from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
 
 from aiogram.types import Message, CallbackQuery
@@ -17,7 +17,7 @@ router = Router(name=__name__)
 #                                   РЕГИСТРАЦИЯ НОВОГО ПОЛЬЗОВАТЕЛЯ
 # ======================================================================================================
 # обработка кнопки name и вернуться в список заполнения
-@router.callback_query(lambda c: c.data == "button_sub")
+@router.callback_query(F.data == "button_sub")
 async def process_add_city(call: CallbackQuery):
     keyboard = InlineKeyboardBuilder()
 
@@ -29,7 +29,7 @@ async def process_add_city(call: CallbackQuery):
     await call.message.answer(text="\U0001F3D8 Выберите город:", reply_markup=keyboard.as_markup())
 
 
-@router.callback_query(lambda c: c.data.startswith('cityAdd_'))
+@router.callback_query(F.data.startswith('cityAdd_'))
 async def process_add_n_sortym(call: CallbackQuery, state: FSMContext):
     user_id = call.message.chat.id
 

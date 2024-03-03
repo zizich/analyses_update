@@ -26,7 +26,7 @@ async def process_go_to_the_archive(message: Message):
 
 
 # обработка кнопки показать архив - watch_archive
-@router.callback_query(lambda c: c.data == "watch_archive")
+@router.callback_query(F.data == "watch_archive")
 async def process_watch_archive(call: CallbackQuery):
     user_id = call.message.chat.id
 
@@ -76,7 +76,7 @@ async def process_watch_archive(call: CallbackQuery):
 
 
 # очистить весь архив
-@router.callback_query(lambda c: c.data == "delete_archive")
+@router.callback_query(F.data == "delete_archive")
 async def process_delete_archive(call: CallbackQuery):
     user_id = call.message.chat.id
     archive_db.execute(f"""DROP TABLE IF EXISTS user_{user_id}""")

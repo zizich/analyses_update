@@ -45,7 +45,7 @@ async def process_show_orders(message: Message):
         await message.answer(text="Заявок нет!")
 
 
-@router.callback_query(lambda c: c.data == "back_to_orders")
+@router.callback_query(F.data == "back_to_orders")
 async def process_back_to_confirm_orders(call: CallbackQuery):
     user_id = call.message.chat.id
 
@@ -76,7 +76,7 @@ async def process_back_to_confirm_orders(call: CallbackQuery):
 
 # ==========================================================================================================
 # ОБРАБОТКА ВЫБРАННОЙ и ПОДТВЕРЖДЕННОЙ ЗАЯВКИ (ОПЛАТА, УДАЛИТЬ, НАЗАД В КОРЗИНУ)
-@router.callback_query(lambda c: c.data.startswith("ordersShow_"))
+@router.callback_query(F.data.startswith("ordersShow_"))
 async def processing_in_confirm_date(call: CallbackQuery):
     global transfer_date, back_to_setting_analyses, message_text_setting_orders
     user_id = call.message.chat.id
@@ -153,7 +153,7 @@ async def processing_in_confirm_date(call: CallbackQuery):
 
 # ==========================================================================================================
 # КНОПКА УДАЛИТЬ ЗАЯВКУ
-@router.callback_query(lambda c: c.data.startswith("delOrder-"))
+@router.callback_query(F.data.startswith("delOrder-"))
 async def process_delete_orders(call: CallbackQuery):
     date = call.data.split("delOrder-")[1]
     keyboard = InlineKeyboardBuilder()
@@ -168,7 +168,7 @@ async def process_delete_orders(call: CallbackQuery):
 
 # ==========================================================================================================
 # КНОПКА УДАЛИТЬ ЗАЯВКУ
-@router.callback_query(lambda c: c.data.startswith("delAllOrder_"))
+@router.callback_query(F.data.startswith("delAllOrder_"))
 async def process_delete_all_orders(call: CallbackQuery):
     user_id = call.message.chat.id
 
@@ -210,7 +210,7 @@ async def process_delete_all_orders(call: CallbackQuery):
 # =============================================================================================================
 # ============================  РЕДАКТИРОВАТЬ ЗАЯВКУ ПОСЛЕ ЕГО ПОДТВЕРЖДЕНИЕ    ===============================
 # =============================================================================================================
-@router.callback_query(lambda c: c.data.startswith("setting_orders_then_config_"))
+@router.callback_query(F.data.startswith("setting_orders_then_config_"))
 async def process_setting_orders_then_config(call: CallbackQuery):
     global message_text_setting_orders
     date = call.data.split("setting_orders_then_config_")[1]
@@ -225,7 +225,7 @@ async def process_setting_orders_then_config(call: CallbackQuery):
 
 
 # ============================  ДОБАВИТЬ ИЛИ УДАЛИТЬ АНАЛИЗЫ ПОСЛЕ ИХ ПОДТВЕРЖДЕНИЕ    ========================
-@router.callback_query(lambda c: c.data.startswith("savePattern_"))
+@router.callback_query(F.data.startswith("savePattern_"))
 async def process_save_pattern(call: CallbackQuery):
     global transfer_date, result_numbers
     date = call.data.split("savePattern_")[1]
@@ -264,7 +264,7 @@ async def process_save_pattern(call: CallbackQuery):
 
 
 # ============================  ПОИСК АНАЛИЗОВ ПОСЛЕ ПОДТВЕРЖДЕНИЯ ЗАЯВКИ    ========================
-@router.callback_query(lambda c: c.data == "get_to_analysis")
+@router.callback_query(F.data == "get_to_analysis")
 async def process_save_pattern_after(call: CallbackQuery, state: FSMContext):
     global last_bot_message_id
     await state.set_state(States.waiting_for_save_pattern_name)
@@ -288,7 +288,7 @@ async def process_save_pattern_after_confirm(message: Message, state: FSMContext
 
 
 # =======================================================================================================
-@router.callback_query(lambda c: c.data.startswith("transferOrders_"))
+@router.callback_query(F.data.startswith("transferOrders_"))
 async def process_transfer_orders(call: CallbackQuery):
     date = call.data.split("transferOrders_")[1]
 
@@ -314,7 +314,7 @@ async def process_transfer_orders(call: CallbackQuery):
 #   8.3 = > В АРХИВ
 #
 # ==========================================================================================================
-@router.callback_query(lambda c: c.data.startswith("inArchive_"))
+@router.callback_query(F.data.startswith("inArchive_"))
 async def process_archive_the_order(call: CallbackQuery):
     date = call.data.split("inArchive_")[1]
     user_id = call.message.chat.id

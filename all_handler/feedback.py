@@ -1,11 +1,9 @@
-import asyncio
 import os
 import platform
 
-import aiogram.exceptions
 import sqlite3 as sq
 from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, FSInputFile
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from data_base import archive_db, connect_archive
 
@@ -36,7 +34,7 @@ async def process_feedback(message: Message):
 
 
 # РАБОТА С КНОПКАМИ ПОМОЩИ
-@router.callback_query(lambda c: c.data == "back_to_help")
+@router.callback_query(F.data == "back_to_help")
 async def process_back_to_help(call: CallbackQuery):
     keyboard = InlineKeyboardBuilder()
     keyboard.button(text="КАК ЗАРЕГИСТРИРОВАТЬСЯ? \U000023E9", callback_data="how_to_register")
@@ -53,7 +51,7 @@ async def process_back_to_help(call: CallbackQuery):
 
 
 # РАБОТА С КНОПКОЙ - НЕТУ РЕЗУЛЬТАТА
-@router.callback_query(lambda c: c.data == "not_result")
+@router.callback_query(F.data == "not_result")
 async def process_not_result(call: CallbackQuery):
     user_id = call.message.chat.id
 
@@ -84,7 +82,7 @@ async def process_not_result(call: CallbackQuery):
 
 
 # РАБОТА С КНОПКОЙ - НЕТУ РЕЗУЛЬТАТА
-@router.callback_query(lambda c: c.data.startswith("notResult_"))
+@router.callback_query(F.data.startswith("notResult_"))
 async def process_not_result_info(call: CallbackQuery):
     user_id = call.message.chat.id
     date = call.data.strip("notResult_")
@@ -115,7 +113,7 @@ async def process_not_result_info(call: CallbackQuery):
 
 
 # РАБОТА С КНОПКОЙ - ОТПРАВКА ЗАПРОСА ОБ ОТСУТСТВИИ РЕЗУЛЬТАТА
-@router.callback_query(lambda c: c.data.startswith("sendRequest_"))
+@router.callback_query(F.data.startswith("sendRequest_"))
 async def process_not_result_info(call: CallbackQuery):
     user_id = call.message.chat.id
     date = (call.data.strip("sendRequest_")).split(">>")[0]
@@ -131,20 +129,20 @@ async def process_not_result_info(call: CallbackQuery):
 
 
 # РАБОТА С КНОПКАМИ ПОМОЩИ
-@router.callback_query(lambda c: c.data in ["how_to_register", "how_to_selected_analyses",
+@router.callback_query(F.data in ["how_to_register", "how_to_selected_analyses",
                                             "how_to_shop", "any_process"])
 async def process_help_buttons(call: CallbackQuery):
     video_path = ""
     if system_info == "Windows":
         if call.data == "how_to_register":
             # Путь к вашему видео
-            video_path = 'D:/Pro/Analyses/manual/Register/reg_1.mp4'
+            video_path = 'D:/Git/analyses/manual/Register/reg_1.mp4'
         elif call.data == "how_to_selected_analyses":
-            video_path = 'D:/Pro/Analyses/manual/Register/reg_2.mp4'
+            video_path = 'D:/Git/analyses/manual/Register/reg_2.mp4'
         elif call.data == "how_to_selected_analyses":
-            video_path = 'D:/Pro/Analyses/manual/Register/reg_3.mp4'
+            video_path = 'D:/Git/analyses/manual/Register/reg_3.mp4'
         elif call.data == "how_to_selected_analyses":
-            video_path = 'D:/Pro/Analyses/manual/Register/reg_4.mp4'
+            video_path = 'D:/Git/analyses/manual/Register/reg_4.mp4'
     elif system_info == "Linux":
         if call.data == "how_to_register":
             # Путь к вашему видео
@@ -163,41 +161,6 @@ async def process_help_buttons(call: CallbackQuery):
         return
 
     # Отправляем видео пользователю с обратным отсчетом
-    countdown_cycle = ["\U0001F4A8"]
-
-    done = True
-    while done:
-        # Запускаем отправку видео в отдельной корутине
-        asyncio.create_task(send_video_with_countdown(video_path))
-
-        await call.message.edit_text(text=f"Загрузка видео-инструкции...\U0001F691{''.join(countdown_cycle)}")
-        # Обратный отсчет
-        for i in range(22):
-            if i < 20:
-                if 4 == len(countdown_cycle):
-                    countdown_cycle = ["\U0001F4A8"]
-                else:
-                    countdown_cycle.append("\U0001F4A8")
-
-                countdown_text = f"Загрузка видео-инструкции...\U0001F691{''.join(countdown_cycle)}"
-
-                try:
-                    await call.message.edit_text(text=countdown_text)
-                except aiogram.exceptions.AiogramError:
-                    pass
-            else:
-                done = False
-                break
-            await asyncio.sleep(1)
-
-        if not done:
-            break
-
-
-def send_video_with_countdown(video_path):
-    # Задержка перед отправкой видео
-    try:
-        with open(video_path, 'rb'):
-            return send_video_with_countdown(video_path=video_path)
-    except FileNotFoundError:
-        return "Видео-инструкция на этапе разработки/оформления. Обратитесь к Администратору группы!"
+    await call.message.answer(text="Началась загрузка видео.")
+    await call.message.answer_video(video=FSInputFile(os.path.abspath(video_path)),
+                                    caption="Загружено")

@@ -44,7 +44,7 @@ async def process_sale(message: Message):
 
 
 # ВЕРНУТСЯ К АКЦИЯМ
-@router.callback_query(lambda c: c.data == "back_to_sale")
+@router.callback_query(F.data == "back_to_sale")
 async def process_back_to_sale(call: CallbackQuery):
     user_id = call.message.chat.id
 
@@ -72,7 +72,7 @@ async def process_back_to_sale(call: CallbackQuery):
 
 
 # ОБРАБОТКА ВЫБОРА АКЦИИ
-@router.callback_query(lambda c: c.data.startswith("actionShow_"))
+@router.callback_query(F.data.startswith("actionShow_"))
 async def process_go_to_sale_analyses(call: CallbackQuery):
     global transfer_sale
     message_sale = ""
@@ -97,7 +97,7 @@ async def process_go_to_sale_analyses(call: CallbackQuery):
 
 
 # ДОБАВИТЬ ИЛИ УДАЛИТЬ ВЫБРАННУЮ АКЦИЮ
-@router.callback_query(lambda c: c.data in ["add_sale", "delete_sale"])
+@router.callback_query(F.data in ["add_sale", "delete_sale"])
 async def process_go_to_sale_add_or_delete(call: CallbackQuery):
     global transfer_sale
     user_id = call.message.chat.id

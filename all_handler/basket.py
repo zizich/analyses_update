@@ -161,7 +161,7 @@ async def process_basket(message: Message):
 #
 #
 # ==========================================================================================================
-@router.callback_query(lambda c: c.data == "who_will_order")
+@router.callback_query(F.data == "who_will_order")
 async def process_who_will_order(call: CallbackQuery):
     keyboard = InlineKeyboardBuilder()
     keyboard.button(text="Мне \U0001F64B", callback_data="my_order_button")
@@ -179,7 +179,7 @@ async def process_who_will_order(call: CallbackQuery):
 #           8.1.1 = > КНОПКА "МНЕ"
 #           8.1.2 = > КНОПКА ДЕТЯМ
 # ==========================================================================================================
-@router.callback_query(lambda c: c.data == "childs_order_button")
+@router.callback_query(F.data == "childs_order_button")
 async def process_buy_for_child(call: CallbackQuery):
     keyboard = InlineKeyboardBuilder()
     keyboard.button(text="1-му ребенку", callback_data="first_child_add_basket")
@@ -193,7 +193,7 @@ async def process_buy_for_child(call: CallbackQuery):
 
 
 # ОБРАБОТКА КНОПКИ НАЗАД от ВЫБОРОВ ЛЮДЕЙ В КОРЗИНУ - ОСНОВНОЕ МЕНЮ =====================================
-@router.callback_query(lambda c: c.data in peoples_collection)
+@router.callback_query(F.data in peoples_collection)
 async def process_back_to_basket_at_who_will_order(call: CallbackQuery):
     user_id = call.message.chat.id
     global transfer_date
@@ -435,7 +435,7 @@ async def process_back_to_basket_at_who_will_order(call: CallbackQuery):
 
 
 # ОБРАБОТКА КНОПКИ ВЫБОРА ВЫЗОВА НА ДОМ ИЛИ САМООБРАЩЕНИЯ =======================================================
-@router.callback_query(lambda c: c.data == "exit_or_self_conversion")
+@router.callback_query(F.data == "exit_or_self_conversion")
 async def process_exit_or_self_conversion(call: CallbackQuery):
     user_id = call.message.chat.id
 
@@ -468,7 +468,7 @@ async def process_exit_or_self_conversion(call: CallbackQuery):
 
 
 # показать все даты по вызову на дом ========================================================================
-@router.callback_query(lambda c: c.data in "go_to_home")
+@router.callback_query(F.data in "go_to_home")
 async def process_exit_or_self(call: CallbackQuery):
     global transfer_date
     user_id = call.message.chat.id
@@ -522,7 +522,7 @@ async def process_exit_or_self(call: CallbackQuery):
 
 
 # показать все даты по самообращению ========================================================================
-@router.callback_query(lambda c: c.data in "go_to_medical")
+@router.callback_query(F.data in "go_to_medical")
 async def process_exit_or_self(call: CallbackQuery):
     global transfer_date
     user_id = call.message.chat.id
@@ -579,7 +579,7 @@ async def process_exit_or_self(call: CallbackQuery):
 # ПРИСВОЕНИЕ ДАТЫ
 #
 # ==========================================================================================================
-@router.callback_query(lambda c: c.data and c.data.startswith('unique_'))
+@router.callback_query(F.data.startswith('unique_'))
 async def process_order_date_with_midwifery(call: CallbackQuery):
     global transfer_date
     user_id = call.message.chat.id
@@ -617,7 +617,7 @@ async def process_order_date_with_midwifery(call: CallbackQuery):
 #
 # ==========================================================================================================
 # Дописать то, что при обработки этой callback должны быть внесены изменения в БД
-@router.callback_query(lambda c: c.data.startswith("delAddDate"))
+@router.callback_query(F.data.startswith("delAddDate"))
 async def process_delete_date_in_database(call: CallbackQuery):
     global transfer_date
     user_id = call.message.chat.id
@@ -641,7 +641,7 @@ async def process_delete_date_in_database(call: CallbackQuery):
 
 
 # =========================== ШАБЛОНЫ =================================================================
-@router.callback_query(lambda c: c.data == "pattern")
+@router.callback_query(F.data == "pattern")
 async def process_pattern(call: CallbackQuery):
     user_id = call.message.chat.id
     global pattern_global
@@ -661,7 +661,7 @@ async def process_pattern(call: CallbackQuery):
         await call.message.answer(text="Шаблонов нет \U0001F4ED", reply_markup=keyboard.as_markup())
 
 
-@router.callback_query(lambda c: c.data and c.data.startswith("pat_"))
+@router.callback_query(F.data.startswith("pat_"))
 async def process_pattern_found(call: CallbackQuery):
     user_id = call.message.chat.id
 
@@ -703,7 +703,7 @@ async def process_pattern_found(call: CallbackQuery):
 
 
 # ================ ДОБАВИТЬ ШАБЛОН ========================================================================
-@router.callback_query(lambda c: c.data.startswith("add_pattern_"))
+@router.callback_query(F.data.startswith("add_pattern_"))
 async def process_pattern_found(call: CallbackQuery):
     user_id = call.message.chat.id
 
@@ -732,7 +732,7 @@ async def process_pattern_found(call: CallbackQuery):
 
 
 # ================ УДАЛИТЬ ШАБЛОН В КОРЗИНЕ  =====================================================================
-@router.callback_query(lambda c: c.data and c.data.startswith("clear_pattern_in_basket_"))
+@router.callback_query(F.data.startswith("clear_pattern_in_basket_"))
 async def process_pattern_found_delete_in_basket(call: CallbackQuery):
     user_id = call.message.chat.id
 
@@ -758,7 +758,7 @@ async def process_pattern_found_delete_in_basket(call: CallbackQuery):
 
 
 # ================ УДАЛИТЬ ШАБЛОН В БД  ===================================================================
-@router.callback_query(lambda c: c.data and c.data.startswith("delete_pattern_in_db_"))
+@router.callback_query(F.data.startswith("delete_pattern_in_db_"))
 async def process_pattern_found_delete_in_db(call: CallbackQuery):
     user_id = call.message.chat.id
     pattern_delete_name = call.data.split("delete_pattern_in_db_")[1]
@@ -786,7 +786,7 @@ async def process_pattern_found_delete_in_db(call: CallbackQuery):
 #
 # ==========================================================================================================
 
-@router.callback_query(lambda c: c.data == "edit_list_order")
+@router.callback_query(F.data == "edit_list_order")
 async def process_edit_basket_analyses_menu(call: CallbackQuery):
     user_id = call.message.chat.id
     messages = []
@@ -827,7 +827,7 @@ async def process_edit_basket_analyses_menu(call: CallbackQuery):
 #
 # ==========================================================================================================
 
-@router.callback_query(lambda c: c.data == "edit_analyses_list")
+@router.callback_query(F.data == "edit_analyses_list")
 async def process_edit_list_order(call: CallbackQuery, state: FSMContext):
     await call.message.answer(text='\U0001F522 Введите КОД-анализа, которого хотите удалить:')
 
@@ -865,7 +865,7 @@ async def process_edit_list_order_done(message: Message, state: FSMContext):
 #       8.4.1 = > РЕДАКТИРОВАТЬ СПИСКО АНАЛИЗОВ УДАЛЯЯ ПО ОДНОМУ АНАЛИЗУ
 #       8.4.2 = > УДАЛИТЬ ВЕСЬ СПИСОК АНАЛИЗОВ
 # ==========================================================================================================
-@router.callback_query(lambda c: c.data == "delete_analyses_list")
+@router.callback_query(F.data == "delete_analyses_list")
 async def process_edit_basket_analyses_menu(call: CallbackQuery):
     user_id = call.message.chat.id
     add_db.execute(f"DELETE FROM user_{user_id}")
@@ -882,7 +882,7 @@ async def process_edit_basket_analyses_menu(call: CallbackQuery):
 
 
 # КОММЕНТАРИИ К ЗАЯВКЕ ==========================================================================================
-@router.callback_query(lambda c: c.data == "comment")
+@router.callback_query(F.data == "comment")
 async def process_comment_basket(call: CallbackQuery):
     keyboard = InlineKeyboardBuilder()
     keyboard.button(text="оставить комментарии", callback_data="add_comment")
@@ -899,7 +899,7 @@ async def process_comment_basket(call: CallbackQuery):
                               reply_markup=keyboard.as_markup())
 
 
-@router.callback_query(lambda c: c.data == "add_comment")
+@router.callback_query(F.data == "add_comment")
 async def process_add_comment_basket(call: CallbackQuery, state: FSMContext):
     await call.message.answer(text='Введите текст комментарии: ')
     await state.set_state(States.waiting_for_add_comment)
@@ -926,7 +926,7 @@ async def process_edit_female_three_done(message: Message, state: FSMContext):
 #                                               ПОДТВЕРЖДЕНИЕ ЗАЯВКИ
 # ================================================================================================================
 
-@router.callback_query(lambda c: c.data == "confirm_the_order")
+@router.callback_query(F.data == "confirm_the_order")
 async def process_confirm_the_order(call: CallbackQuery):
     user_id = call.message.chat.id
     basket_db.execute(f"""
@@ -958,7 +958,7 @@ async def process_confirm_the_order(call: CallbackQuery):
 #                                     обработка кнопки ПОДТВЕРЖДЕНИЯ
 # =================================================================================================================
 
-@router.callback_query(lambda c: c.data == "confirm_button")
+@router.callback_query(F.data == "confirm_button")
 async def process_confirm_basket(call: CallbackQuery):
     user_id = call.message.chat.id
 

@@ -1,4 +1,4 @@
-from aiogram import Router
+from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
 
 from aiogram.types import Message, CallbackQuery
@@ -11,13 +11,13 @@ from keyboard import edit_people_one
 router = Router(name=__name__)
 
 
-@router.callback_query(lambda c: c.data in ["edit_people_one", "add_people_one"])
+@router.callback_query(F.data in ["edit_people_one", "add_people_one"])
 async def process_edit_people_one(call: CallbackQuery):
     keyboard = edit_people_one()
     await call.message.answer(text="Редактировать/Добавить: ", reply_markup=keyboard.as_markup())
 
 
-@router.callback_query(lambda c: c.data == "people_name_one")
+@router.callback_query(F.data == "people_name_one")
 async def process_edit_name_one(call: CallbackQuery, state: FSMContext):
     await state.set_state(States.waiting_for_edit_name_people_one)
     await call.message.answer(text='Введите имя: ')
@@ -37,7 +37,7 @@ async def process_edit_name_one(message: Message, state: FSMContext):
 
 
 # изменить фамилию первого ребенка 1-ГО ЧЕЛОВЕКА
-@router.callback_query(lambda c: c.data == "people_female_one")
+@router.callback_query(F.data == "people_female_one")
 async def process_edit_female_one(call: CallbackQuery, state: FSMContext):
     await state.set_state(States.waiting_for_edit_female_people_one)
     await call.message.answer(text='Введите фамилию: ')
@@ -57,7 +57,7 @@ async def process_edit_female_one_done(message: Message, state: FSMContext):
 
 
 # изменить отчество первого ребенка 1-ГО ЧЕЛОВЕКА
-@router.callback_query(lambda c: c.data == "people_patronymic_one")
+@router.callback_query(F.data == "people_patronymic_one")
 async def process_edit_patronymic_one(call: CallbackQuery, state: FSMContext):
     await state.set_state(States.waiting_for_edit_patronymic_people_one)
     await call.message.answer(text='Введите отчество: ')
@@ -77,7 +77,7 @@ async def process_edit_patronymic_one_done(message: Message, state: FSMContext):
 
 
 # изменить дату рождения первого ребенка 1-ГО ЧЕЛОВЕКА
-@router.callback_query(lambda c: c.data == "people_birth_day_one")
+@router.callback_query(F.data == "people_birth_day_one")
 async def process_edit_birth_day_one(call: CallbackQuery, state: FSMContext):
     await state.set_state(States.waiting_for_edit_birth_date_people_one)
     await call.message.answer(text='Введите дату рождения: (дд.мм.гггг) ')
@@ -98,7 +98,7 @@ async def process_edit_birth_day_one_done(message: Message, state: FSMContext):
 
 # изменить номер телефона 1-ГО ЧЕЛОВЕКА
 
-@router.callback_query(lambda c: c.data == "people_phone_one")
+@router.callback_query(F.data == "people_phone_one")
 async def process_edit_birth_day_one(call: CallbackQuery, state: FSMContext):
     await state.set_state(States.waiting_for_edit_phone_people_one)
     await call.message.answer(text='Введите номер телефона:')
@@ -119,7 +119,7 @@ async def process_edit_birth_day_one_done(message: Message, state: FSMContext):
 
 # изменить номер e-mail 1-ГО ЧЕЛОВЕКА
 
-@router.callback_query(lambda c: c.data == "people_email_one")
+@router.callback_query(F.data == "people_email_one")
 async def process_edit_birth_day_one(call: CallbackQuery, state: FSMContext):
     await state.set_state(States.waiting_for_edit_email_people_one)
     await call.message.answer(text='Введите email: (info@info.in)')
@@ -139,7 +139,7 @@ async def process_edit_birth_day_one_done(message: Message, state: FSMContext):
 
 
 # изменить номер адрес 1-ГО ЧЕЛОВЕКА
-@router.callback_query(lambda c: c.data == "city_people_one")
+@router.callback_query(F.data == "city_people_one")
 async def process_city_people_one(call: CallbackQuery):
     keyboard = InlineKeyboardBuilder()
 
@@ -150,7 +150,7 @@ async def process_city_people_one(call: CallbackQuery):
     await call.message.answer(text="\U0001F3D8 Выберите населенный пункт:", reply_markup=keyboard.as_markup())
 
 
-@router.callback_query(lambda c: c.data.startswith("cityOtherAdd_"))
+@router.callback_query(F.data.startswith("cityOtherAdd_"))
 async def process_add_city_people_one(call: CallbackQuery):
     user_id = call.message.chat.id
 
@@ -180,7 +180,7 @@ async def process_add_city_people_one(call: CallbackQuery):
     await call.message.answer(text=f"Город: {city} успешно сохранен!", reply_markup=keyboard.as_markup())
 
 
-@router.callback_query(lambda c: c.data == "people_adress_one")
+@router.callback_query(F.data == "people_adress_one")
 async def process_edit_birth_day_one(call: CallbackQuery, state: FSMContext):
     await state.set_state(States.waiting_for_edit_address_people_one)
     await call.message.answer(text='Введите адрес забора биоматериалов: ')
@@ -200,7 +200,7 @@ async def process_edit_birth_day_one_done(message: Message, state: FSMContext):
 
 
 # ================================ УДАЛИТЬ 1-го ЧЕЛОВЕКА ========================================
-@router.callback_query(lambda c: c.data == "delete_people_one")
+@router.callback_query(F.data == "delete_people_one")
 async def process_delete_people_one(call: CallbackQuery):
     user_id = call.message.chat.id
     tables = ["others_name_one", "others_female_one", "others_patronymic_one", "others_birth_date_one",

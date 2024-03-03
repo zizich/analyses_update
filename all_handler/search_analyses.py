@@ -7,7 +7,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from core.any_process import translate_any_number_analysis
 from core.fsm_engine import States
 from core.search_algorithm import search_analyses, all_complex, all_complex_selected
-from data_base import basket_db, conn_basket, sur_analysis_db, all_analysis_db, add_db, connect_added, \
+from data_base import basket_db, conn_basket, all_analysis_db, add_db, connect_added, \
     profit_db, connect_profit, complex_analyses_db
 
 router = Router(name=__name__)
@@ -30,7 +30,7 @@ async def process_take_tests(message: Message):
                          reply_markup=keyboard.as_markup())
 
 
-@router.callback_query(lambda c: c.data == "back_to_analyses")
+@router.callback_query(F.data == "back_to_analyses")
 async def process_back_to_analyses(call: CallbackQuery):
     keyboard = InlineKeyboardBuilder()
     keyboard.button(text="Комплексы \U0001F9EA", callback_data="group_buttons")
@@ -44,7 +44,7 @@ async def process_back_to_analyses(call: CallbackQuery):
 # ==========================================================================================================
 #                                       ПОИСК АНАЛИЗОВ:
 # ==========================================================================================================
-@router.callback_query(lambda c: c.data == "search_analysis")
+@router.callback_query(F.data == "search_analysis")
 async def process_go_to_search_analysis(call: CallbackQuery, state: FSMContext):
     await state.set_state(States.waiting_for_search)
     await call.message.answer(text="\U000026A0 ВНИМАНИЕ \U0000203C"
@@ -82,7 +82,7 @@ async def process_find_search(message: Message, state: FSMContext):
                              reply_markup=keyboard.as_markup())
 
 
-@router.callback_query(lambda c: c.data.startswith('id_'))
+@router.callback_query(F.data.startswith('id_'))
 async def process_income_analysis(call: CallbackQuery):
     idAnalyses = (call.data.split('id_')[1]).split("-")[0]
     stop_analysis = all_analysis_db.execute("""SELECT stopped FROM clinic WHERE id_num = ?""",
@@ -97,9 +97,9 @@ async def process_income_analysis(call: CallbackQuery):
                              "\nСрок готовности: {} дн.").format(analysis.split('(')[0], price, readiness)
 
         keyboard = InlineKeyboardBuilder()
-        keyboard.button(text=f"поиск \U0001F50E", callback_data="search_analysis")
         keyboard.button(text="добавить \U00002705", callback_data=f"addAn_{idAnalyses}")
         keyboard.button(text="информация \U00002753", callback_data=f"infoAn_{idAnalyses}")
+        keyboard.button(text="поиск \U0001F50E", callback_data="search_analysis")
         keyboard.button(text="удалить \U0000274E", callback_data=f"delAn_{idAnalyses}")
         keyboard.button(text="назад \U000023EA", callback_data="back_to_previous_search")
         keyboard.adjust(2)
@@ -114,7 +114,7 @@ async def process_income_analysis(call: CallbackQuery):
                                   reply_markup=keyboard.as_markup())
 
 
-@router.callback_query(lambda c: c.data == "back_to_previous_search")
+@router.callback_query(F.data == "back_to_previous_search")
 async def previous_search(call: CallbackQuery):
     global search_word
 
@@ -142,7 +142,7 @@ async def previous_search(call: CallbackQuery):
 
 
 # ОБРАБОТКА КНОПКИ КАЖДОЙ ФУНКЦИИ АНАЛИЗА (ДОБАВИТЬ)
-@router.callback_query(lambda c: c.data.startswith('addAn_'))
+@router.callback_query(F.data.startswith('addAn_'))
 async def processing_found_analysis_search(call: CallbackQuery):
     user_id = call.message.chat.id
     idAnalyses = (call.data.split('addAn_')[1]).split("-")[0]
@@ -166,15 +166,15 @@ async def processing_found_analysis_search(call: CallbackQuery):
 
     keyboard_added = InlineKeyboardBuilder()
     keyboard_added.button(text="\U0001F50E поиск ", callback_data="search_analysis")
-    keyboard_added.button(text="назад \U000023EA", callback_data=f"back_to_previous_search")
     keyboard_added.button(text="\U0001F4E5 корзина", callback_data="back_to_basket_menu")
+    keyboard_added.button(text="назад \U000023EA", callback_data=f"back_to_previous_search")
     keyboard_added.adjust(1)
 
     await call.message.answer(text=text_for_added, reply_markup=keyboard_added.as_markup())
 
 
 # ОБРАБОТКА КНОПКИ КАЖДОЙ ФУНКЦИИ АНАЛИЗА (ИНФО)
-@router.callback_query(lambda c: c.data.startswith('infoAn_'))
+@router.callback_query(F.data.startswith('infoAn_'))
 async def processing_found_analysis_info(call: CallbackQuery):
     idAnalyses = (call.data.split('infoAn_')[1]).split("-")[0]
 
@@ -188,15 +188,15 @@ async def processing_found_analysis_info(call: CallbackQuery):
 
     keyboard = InlineKeyboardBuilder()
     keyboard.button(text="\U0001F50E поиск ", callback_data="search_analysis")
-    keyboard.button(text="назад \U000023EA", callback_data=f"id_{idAnalyses}")
     keyboard.button(text="\U0001F4E5 корзина", callback_data="back_to_basket_menu")
+    keyboard.button(text="назад \U000023EA", callback_data=f"id_{idAnalyses}")
     keyboard.adjust(1)
 
     await call.message.answer(text=outcome, reply_markup=keyboard.as_markup())
 
 
 # ОБРАБОТКА КНОПКИ КАЖДОЙ ФУНКЦИИ АНАЛИЗА (УДАЛИТЬ)
-@router.callback_query(lambda c: c.data.startswith('delAn_'))
+@router.callback_query(F.data.startswith('delAn_'))
 async def processing_found_analysis_delete(call: CallbackQuery):
     user_id = call.message.chat.id
     idAnalyses = (call.data.split('delAn_')[1]).split("-")[0]
@@ -214,8 +214,8 @@ async def processing_found_analysis_delete(call: CallbackQuery):
 
     keyboard = InlineKeyboardBuilder()
     keyboard.button(text="\U0001F50E поиск ", callback_data="search_analysis")
-    keyboard.button(text="назад \U000023EA", callback_data="back_to_previous_search")
     keyboard.button(text="\U0001F4E5 корзина", callback_data="back_to_basket_menu")
+    keyboard.button(text="назад \U000023EA", callback_data="back_to_previous_search")
     keyboard.adjust(1)
 
     await call.message.answer(text=outcome, reply_markup=keyboard.as_markup())
@@ -224,7 +224,7 @@ async def processing_found_analysis_delete(call: CallbackQuery):
 # ==========================================================================================================
 #                                       КОМПЛЕКСЫ АНАЛИЗОВ:
 # ==========================================================================================================
-@router.callback_query(lambda c: c.data == "group_buttons")
+@router.callback_query(F.data == "group_buttons")
 async def process_go_to_group_analysis(call: CallbackQuery):
     # Выводим из БД список всех анализов и их параметров. Итерируем анализы по полученной группе (сортировка по
     # - уникальному номеру каждого анализа
@@ -249,7 +249,7 @@ async def process_go_to_group_analysis(call: CallbackQuery):
 
 
 # ОБРАБОТКА КНОПКИ ВЫБОРА КОМПЛЕКСА
-@router.callback_query(lambda c: c.data.startswith("group_"))
+@router.callback_query(F.data.startswith("group_"))
 async def process_complex_watch(call: CallbackQuery):
     keyboard = InlineKeyboardBuilder()
 
@@ -273,7 +273,7 @@ async def process_complex_watch(call: CallbackQuery):
 
 
 # ОБРАБОТКА КНОПКИ "ДОБАВИТЬ" ВЫБРАННОГО КОМПЛЕКСА
-@router.callback_query(lambda c: c.data.startswith("addSlctd_"))
+@router.callback_query(F.data.startswith("addSlctd_"))
 async def process_komplex_add(call: CallbackQuery):
     user_id = call.message.chat.id
     list_sequence = all_complex_selected(call.data.split('addSlctd_')[1])
@@ -297,13 +297,13 @@ async def process_komplex_add(call: CallbackQuery):
             connect_profit.commit()
 
     keyboard = InlineKeyboardBuilder()
-    keyboard.button(text="назад \U000023EA", callback_data="group_buttons")
     keyboard.button(text="корзина \U0001F4E5", callback_data="back_to_basket_menu")
+    keyboard.button(text="назад \U000023EA", callback_data="group_buttons")
     keyboard.adjust(1)
     await call.message.answer(text=outcome, reply_markup=keyboard.as_markup())
 
 
-@router.callback_query(lambda c: c.data.startswith("delSlctd_"))
+@router.callback_query(F.data.startswith("delSlctd_"))
 async def process_komplex_add(call: CallbackQuery):
     user_id = call.message.chat.id
     list_sequence = all_complex_selected(call.data.split('delSlctd_')[1])
@@ -323,15 +323,15 @@ async def process_komplex_add(call: CallbackQuery):
             connect_profit.commit()
 
     keyboard = InlineKeyboardBuilder()
-    keyboard.button(text="назад \U000023EA", callback_data="group_buttons")
     keyboard.button(text="корзина \U0001F4E5", callback_data="back_to_basket_menu")
+    keyboard.button(text="назад \U000023EA", callback_data="group_buttons")
     keyboard.adjust(1)
     list_sequence.clear()
     await call.message.answer(text=outcome, reply_markup=keyboard.as_markup())
 
 
 # ОБРАБОТКА КНОПКИ СТОП-ЛИСТА
-@router.callback_query(lambda c: c.data == "stop_list")
+@router.callback_query(F.data == "stop_list")
 async def process_stop_list(call: CallbackQuery):
 
     stop_analyses = []

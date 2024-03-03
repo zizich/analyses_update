@@ -94,8 +94,7 @@ async def process_edit_birth_date_user_back(message: Message, state: FSMContext)
 @router.callback_query(F.data == "edit_phone_user")
 async def process_edit_phone_user(call: CallbackQuery, state: FSMContext):
     await state.set_state(States.waiting_for_edit_phone_user)
-    await call.message.answer(chat_id=call.message.chat.id,
-                              text='Введите номер телефона в формате 8911-222-33-44')
+    await call.message.answer(text='Введите номер телефона в формате 8911-222-33-44')
 
 
 # ==========================ОБРАБОТКА СТАТУСА "НАЗАД" ПОСЛЕ РЕДАКТИРОВАНИЯ НОМЕРА ТЕЛЕФОНА==========================

@@ -12,7 +12,7 @@ router = Router(name=__name__)
 
 
 # ================================ДОБАВЛЕНИЕ 1-го РЕБНКА ============================================
-@router.callback_query(lambda c: c.data == "add_child_button")
+@router.callback_query(F.data == "add_child_button")
 async def process_add_child(call: CallbackQuery, state: FSMContext):
     await state.set_state(States.waiting_for_add_child_button)
     await call.message.answer(text="Введите имя:")
@@ -69,7 +69,7 @@ async def process_add_child_birth_date_button(message: Message, state: FSMContex
 # ======================================================================================================
 #                                           Редактировать 1-го ребенка
 # ======================================================================================================
-@router.callback_query(lambda c: c.data == "edit_child")
+@router.callback_query(F.data == "edit_child")
 async def process_edit_child(call: CallbackQuery):
     keyboard = buttons_edit_childs_one()
     await call.message.answer(text="Изменить 1-го ребенка: ", reply_markup=keyboard.as_markup())
@@ -93,7 +93,7 @@ async def process_edit_name_one_done(message: Message, state: FSMContext):
 
 
 # изменить фамилию первого ребенка
-@router.callback_query(lambda c: c.data == "female_one")
+@router.callback_query(F.data == "female_one")
 async def process_edit_female_one(call: CallbackQuery, state: FSMContext):
     await state.set_state(States.waiting_for_edit_child_female_one)
     await call.message.answer(text='Введите фамилию: ')
@@ -110,7 +110,7 @@ async def process_edit_female_one_done(message: Message, state: FSMContext):
 
 
 # изменить отчество первого ребенка
-@router.callback_query(lambda c: c.data == "patronymic_one")
+@router.callback_query(F.data == "patronymic_one")
 async def process_edit_patronymic_one(call: CallbackQuery, state: FSMContext):
     await state.set_state(States.waiting_for_edit_child_patronymic_one)
     await call.message.answer(text='Введите отчество: ')
@@ -128,7 +128,7 @@ async def process_edit_patronymic_one_done(message: Message, state: FSMContext):
 
 
 # изменить дату рождения первого ребенка
-@router.callback_query(lambda c: c.data == "birth_day_one")
+@router.callback_query(F.data == "birth_day_one")
 async def process_edit_birth_day_one(call: CallbackQuery, state: FSMContext):
     await state.set_state(States.waiting_for_edit_child_birth_day_one)
     await call.message.answer(text='Введите дату рождения: (дд.мм.гггг) ')
@@ -148,7 +148,7 @@ async def process_edit_birth_day_one_done(message: Message, state: FSMContext):
 # ================================================================================================================
 #                                                ДОБАВЛЕНИЕ 2-ГО РЕБЕНКА
 # ================================================================================================================
-@router.callback_query(lambda c: c.data == "add_two_child_button")
+@router.callback_query(F.data == "add_two_child_button")
 async def process_add_child_two(call: CallbackQuery, state: FSMContext):
     await state.set_state(States.waiting_for_add_two_child_name)
     await call.message.answer(text="Введите имя:")
@@ -201,13 +201,13 @@ async def process_add_child_birth_date_button_two(message: Message, state: FSMCo
 # ======================================================================================================
 #                                           Редактировать 2-го ребенка
 # ======================================================================================================
-@router.callback_query(lambda c: c.data == "edit_second_child")
+@router.callback_query(F.data == "edit_second_child")
 async def process_edit_child_two(call: CallbackQuery):
     keyboard = buttons_edit_childs_two()
     await call.message.answer(text="Изменить 1-го ребенка: ", reply_markup=keyboard.as_markup())
 
 
-@router.callback_query(lambda c: c.data == "name_two")
+@router.callback_query(F.data == "name_two")
 async def process_edit_name_two(call: CallbackQuery, state: FSMContext):
     await state.set_state(States.waiting_for_edit_two_child_name)
     await call.message.answer(text='Введите имя: ')
@@ -225,7 +225,7 @@ async def process_edit_name_two_done(message: Message, state: FSMContext):
 
 
 # изменить фамилию первого ребенка
-@router.callback_query(lambda c: c.data == "female_two")
+@router.callback_query(F.data == "female_two")
 async def process_edit_female_two(call: CallbackQuery, state: FSMContext):
     await state.set_state(States.waiting_for_edit_two_child_female)
     await call.message.answer(text='Введите фамилию: ')
@@ -242,7 +242,7 @@ async def process_edit_female_two_done(message: Message, state: FSMContext):
 
 
 # изменить отчество первого ребенка
-@router.callback_query(lambda c: c.data == "patronymic_two")
+@router.callback_query(F.data == "patronymic_two")
 async def process_edit_patronymic_two(call: CallbackQuery, state: FSMContext):
     await state.set_state(States.waiting_for_edit_two_child_patronymic)
     await call.message.answer(text='Введите отчество: ')
@@ -260,7 +260,7 @@ async def process_edit_patronymic_two_done(message: Message, state: FSMContext):
 
 
 # изменить дату рождения первого ребенка
-@router.callback_query(lambda c: c.data == "birth_day_two")
+@router.callback_query(F.data == "birth_day_two")
 async def process_edit_birth_day_two(call: CallbackQuery, state: FSMContext):
     await state.set_state(States.waiting_for_edit_two_child_birth_date)
     await call.message.answer(text='Введите дату рождения: (дд.мм.гггг) ')
@@ -280,7 +280,7 @@ async def process_edit_birth_day_two_done(message: Message, state: FSMContext):
 # ================================================================================================================
 #                                                ДОБАВЛЕНИЕ 3-ГО РЕБЕНКА
 # ================================================================================================================
-@router.callback_query(lambda c: c.data == "add_three_child_button")
+@router.callback_query(F.data == "add_three_child_button")
 async def process_add_child_three(call: CallbackQuery, state: FSMContext):
     await state.set_state(States.waiting_for_add_three_child_name)
     await call.message.answer(text="Введите имя:")
@@ -333,13 +333,13 @@ async def process_add_child_birth_date_button_three(message: Message, state: FSM
 # ======================================================================================================
 #                                           Редактировать 3-ГО РЕБЕНКА
 # ======================================================================================================
-@router.callback_query(lambda c: c.data == "edit_three_child")
+@router.callback_query(F.data == "edit_three_child")
 async def process_edit_child_three(call: CallbackQuery):
     keyboard = buttons_edit_childs_three()
     await call.message.answer(text="Изменить 3-го ребенка: ", reply_markup=keyboard.as_markup())
 
 
-@router.callback_query(lambda c: c.data == "name_three")
+@router.callback_query(F.data == "name_three")
 async def process_edit_name_three(call: CallbackQuery, state: FSMContext):
     await state.set_state(States.waiting_for_edit_three_child_name)
     await call.message.answer(text='Введите имя: ')
@@ -357,7 +357,7 @@ async def process_edit_name_three_done(message: Message, state: FSMContext):
 
 
 # изменить фамилию первого ребенка
-@router.callback_query(lambda c: c.data == "female_three")
+@router.callback_query(F.data == "female_three")
 async def process_edit_female_three(call: CallbackQuery, state: FSMContext):
     await state.set_state(States.waiting_for_edit_three_child_female)
     await call.message.answer(text='Введите фамилию: ')
@@ -374,7 +374,7 @@ async def process_edit_female_one_three(message: Message, state: FSMContext):
 
 
 # изменить отчество первого ребенка
-@router.callback_query(lambda c: c.data == "patronymic_three")
+@router.callback_query(F.data == "patronymic_three")
 async def process_edit_patronymic_three(call: CallbackQuery, state: FSMContext):
     await state.set_state(States.waiting_for_edit_three_child_patronymic)
     await call.message.answer(text='Введите отчество: ')
@@ -392,7 +392,7 @@ async def process_edit_patronymic_three_done(message: Message, state: FSMContext
 
 
 # изменить дату рождения первого ребенка
-@router.callback_query(lambda c: c.data == "birth_day_three")
+@router.callback_query(F.data == "birth_day_three")
 async def process_edit_birth_day_three(call: CallbackQuery, state: FSMContext):
     await state.set_state(States.waiting_for_edit_three_child_birth_date)
     await call.message.answer(text='Введите дату рождения: (дд.мм.гггг) ')
@@ -412,7 +412,7 @@ async def process_edit_birth_day_three_done(message: Message, state: FSMContext)
 # ================================================================================================================
 #                                                ДОБАВЛЕНИЕ 4-ГО РЕБЕНКА
 # ================================================================================================================
-@router.callback_query(lambda c: c.data == "add_four_child_button")
+@router.callback_query(F.data == "add_four_child_button")
 async def process_add_child_four(call: CallbackQuery, state: FSMContext):
     await state.set_state(States.waiting_for_add_four_child_name)
     await call.message.answer(text="Введите имя:")
@@ -465,13 +465,13 @@ async def process_add_child_birth_date_button_four(message: Message, state: FSMC
 # ======================================================================================================
 #                                           Редактировать 4-ГО РЕБЕНКА
 # ======================================================================================================
-@router.callback_query(lambda c: c.data == "edit_four_child")
+@router.callback_query(F.data == "edit_four_child")
 async def process_edit_child_four(call: CallbackQuery):
     keyboard = buttons_edit_childs_four()
     await call.message.answer(text="Изменить 4-го ребенка: ", reply_markup=keyboard.as_markup())
 
 
-@router.callback_query(lambda c: c.data == "name_four")
+@router.callback_query(F.data == "name_four")
 async def process_edit_name_four(call: CallbackQuery, state: FSMContext):
     await state.set_state(States.waiting_for_edit_four_child_name)
     await call.message.answer(text='Введите имя: ')
@@ -489,7 +489,7 @@ async def process_edit_name_four_done(message: Message, state: FSMContext):
 
 
 # изменить фамилию первого ребенка
-@router.callback_query(lambda c: c.data == "female_four")
+@router.callback_query(F.data == "female_four")
 async def process_edit_female_four(call: CallbackQuery, state: FSMContext):
     await state.set_state(States.waiting_for_edit_four_child_female)
     await call.message.answer(text='Введите фамилию: ')
@@ -506,7 +506,7 @@ async def process_edit_female_one_four(message: Message, state: FSMContext):
 
 
 # изменить отчество первого ребенка
-@router.callback_query(lambda c: c.data == "patronymic_four")
+@router.callback_query(F.data == "patronymic_four")
 async def process_edit_patronymic_four(call: CallbackQuery, state: FSMContext):
     await state.set_state(States.waiting_for_edit_four_child_patronymic)
     await call.message.answer(text='Введите отчество: ')
@@ -524,7 +524,7 @@ async def process_edit_patronymic_four_done(message: Message, state: FSMContext)
 
 
 # изменить дату рождения первого ребенка
-@router.callback_query(lambda c: c.data == "birth_day_four")
+@router.callback_query(F.data == "birth_day_four")
 async def process_edit_birth_day_four(call: CallbackQuery, state: FSMContext):
     await state.set_state(States.waiting_for_edit_four_child_birth_date)
     await call.message.answer(text='Введите дату рождения: (дд.мм.гггг) ')
@@ -544,7 +544,7 @@ async def process_edit_birth_day_four_done(message: Message, state: FSMContext):
 # ========================================================================================
 #                                      УДАЛЕНИЕ 1-го ребенка
 # ========================================================================================
-@router.callback_query(lambda c: c.data == "delete_child_one")
+@router.callback_query(F.data == "delete_child_one")
 async def process_delete_child_one(call: CallbackQuery):
     user_id = call.message.chat.id
     tables = ["child_name", "child_female", "child_patronymic", "child_birth_date",
@@ -560,7 +560,7 @@ async def process_delete_child_one(call: CallbackQuery):
 # ========================================================================================
 #                                      УДАЛЕНИЕ 2-го ребенка
 # ========================================================================================
-@router.callback_query(lambda c: c.data == "delete_child_two")
+@router.callback_query(F.data == "delete_child_two")
 async def process_delete_child_one(call: CallbackQuery):
     user_id = call.message.from_user.id
     tables = ["two_child_name", "two_child_female", "two_child_patronymic", "two_child_birth_date",
@@ -576,7 +576,7 @@ async def process_delete_child_one(call: CallbackQuery):
 # ========================================================================================
 #                                      УДАЛЕНИЕ 3-го ребенка
 # ========================================================================================
-@router.callback_query(lambda c: c.data == "delete_child_three")
+@router.callback_query(F.data == "delete_child_three")
 async def process_delete_child_one(call: CallbackQuery):
     user_id = call.message.from_user.id
     tables = ["three_child_name", "three_child_female", "three_child_patronymic", "three_child_birth_date",
