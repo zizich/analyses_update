@@ -7,6 +7,7 @@ from core.fsm_engine import States
 from data_base import (basket_db, conn_basket, job_db, date_add_db, midwifery_conn, pattern_db, all_analysis_db,
                        connect_pattern, profit_income_db, connect_profit_income, order_done_db, connect_order_done,
                        midwifery_db, archive_db, connect_archive)
+from keyboard import kb_orders
 
 router = Router(name=__name__)
 
@@ -49,27 +50,13 @@ async def process_show_orders(message: Message):
 async def process_back_to_confirm_orders(call: CallbackQuery):
     user_id = call.message.chat.id
 
-    global button_not_duplicate, transfer_date_delivery
-
     # выводим все данные с БД basket пользователя на консоль
     basket_db.execute(f"SELECT * FROM user_{user_id}")
     result_the_end = basket_db.fetchall()
 
-    keyboard = InlineKeyboardBuilder()
-
-    for i, (id_date, name, analysis, price, address, city, delivery, comm, id_mid, confirm) in enumerate(result_the_end,
-                                                                                                         start=1):
-
-        if confirm == "не подтверждена":
-            emoji_str = "\U0000274C"
-        else:
-            emoji_str = "\u2705"
-        keyboard.button(text=f"{id_date} {emoji_str}", callback_data=f"ordersShow_{id_date}")
-
-    keyboard.adjust(2)
-
     if len(result_the_end) != 0 and result_the_end[0][0] is not None:
-        await call.message.edit_text(text="\U0001F449 Выберите заявку: ", reply_markup=keyboard.as_markup())
+        await call.message.edit_text(text="\U0001F449 Выберите заявку: ",
+                                     reply_markup=await kb_orders(result_the_end))
     else:
         await call.message.edit_text(text="Заявок нет!")
 
@@ -141,14 +128,17 @@ async def processing_in_confirm_date(call: CallbackQuery):
     # =======================================================================================================
     message_text_setting_orders += cash_phone_bank
 
-    keyboard = InlineKeyboardBuilder()
-    keyboard.button(text="выполнено \U000023E9", callback_data=f"inArchive_{date}")
-    keyboard.button(text="отменить \U00002702 \U0000FE0F", callback_data=f"delOrder-{date}_{id_midwifery}")
-    keyboard.button(text="изменить \U0001F6E0", callback_data=f"setting_orders_then_config_{date}")
-    keyboard.button(text="назад \U000023EA", callback_data="back_to_orders")
-    keyboard.adjust(2)
+    async def kb_orders_info():
+        keyboard = InlineKeyboardBuilder()
+        keyboard.button(text="выполнено \U000023E9", callback_data=f"inArchive_{date}")
+        keyboard.button(text="отменить \U00002702 \U0000FE0F", callback_data=f"delOrder-{date}_{id_midwifery}")
+        keyboard.button(text="изменить \U0001F6E0", callback_data=f"setting_orders_then_config_{date}")
+        keyboard.button(text="назад \U000023EA", callback_data="back_to_orders")
+        keyboard.adjust(2)
 
-    await call.message.answer(text=message_text_setting_orders, reply_markup=keyboard.as_markup())
+        return keyboard.as_markup()
+
+    await call.message.edit_text(text=message_text_setting_orders, reply_markup=await kb_orders_info())
 
 
 # ==========================================================================================================
@@ -156,14 +146,18 @@ async def processing_in_confirm_date(call: CallbackQuery):
 @router.callback_query(F.data.startswith("delOrder-"))
 async def process_delete_orders(call: CallbackQuery):
     date = call.data.split("delOrder-")[1]
-    keyboard = InlineKeyboardBuilder()
-    keyboard.button(text="отменить \U00002702 \U0000FE0F", callback_data=f"delAllOrder_{date}")
-    keyboard.button(text="назад \U000023EA", callback_data="back_to_orders")
-    keyboard.adjust(1)
-    await call.message.answer(text="\U0000203C️ \U0000FE0F Будет удалена вся информация и результаты "
-                                   "данной заявки! Передайте в архив заявку для сохранения результатов!"
-                                   "\n\U0000203C️ \U0000FE0F Загруженные результаты в чат-боте сохраняются!",
-                              reply_markup=keyboard.as_markup())
+
+    async def kb_del_orders():
+        keyboard = InlineKeyboardBuilder()
+        keyboard.button(text="отменить \U00002702 \U0000FE0F", callback_data=f"delAllOrder_{date}")
+        keyboard.button(text="назад \U000023EA", callback_data="back_to_orders")
+        keyboard.adjust(1)
+        return keyboard.as_markup()
+
+    await call.message.edit_text(text="\U0000203C️ \U0000FE0F Будет удалена вся информация и результаты "
+                                      "данной заявки! Передайте в архив заявку для сохранения результатов!"
+                                      "\n\U0000203C️ \U0000FE0F Загруженные результаты в чат-боте сохраняются!",
+                                 reply_markup=await kb_del_orders())
 
 
 # ==========================================================================================================
@@ -193,9 +187,11 @@ async def process_delete_all_orders(call: CallbackQuery):
     profit_income_db.execute("DELETE FROM users WHERE date = ?", (del_date,))
     connect_profit_income.commit()
 
-    keyboard = InlineKeyboardBuilder()
-    keyboard.button(text="назад \U000023EA", callback_data="back_to_orders")
-    keyboard.adjust(1)
+    async def kb_back():
+        keyboard = InlineKeyboardBuilder()
+        keyboard.button(text="назад \U000023EA", callback_data="back_to_orders")
+        keyboard.adjust(1)
+        return keyboard.as_markup()
 
     # try:
     #     # Удаляем каталог и его содержимое
@@ -204,7 +200,7 @@ async def process_delete_all_orders(call: CallbackQuery):
     # except OSError as error:
     #     print(f"3737 Не удалось удалить каталог: {error}")
 
-    await call.message.answer(text="\U00002702 \U0000FE0F Удалено!", reply_markup=keyboard.as_markup())
+    await call.message.edit_text(text="\U00002702 \U0000FE0F Удалено!", reply_markup=await kb_back())
 
 
 # =============================================================================================================
@@ -215,13 +211,15 @@ async def process_setting_orders_then_config(call: CallbackQuery):
     global message_text_setting_orders
     date = call.data.split("setting_orders_then_config_")[1]
 
-    keyboard = InlineKeyboardBuilder()
-    keyboard.button(text="сохранить шаблон \U0001F4BE", callback_data=f"savePattern_{date}")
-    keyboard.button(text="как перенести заявку \U0001F500 \U0001F558", callback_data=f"transferOrders_{date}")
-    keyboard.button(text="назад \U000023EA", callback_data=f"ordersShow_{date}")
-    keyboard.adjust(1)
+    async def kb_setting_orders():
+        keyboard = InlineKeyboardBuilder()
+        keyboard.button(text="сохранить шаблон \U0001F4BE", callback_data=f"savePattern_{date}")
+        keyboard.button(text="как перенести заявку \U0001F500 \U0001F558", callback_data=f"transferOrders_{date}")
+        keyboard.button(text="назад \U000023EA", callback_data=f"ordersShow_{date}")
+        keyboard.adjust(1)
+        return keyboard.as_markup()
 
-    await call.message.answer(text=message_text_setting_orders, reply_markup=keyboard.as_markup())
+    await call.message.edit_text(text=message_text_setting_orders, reply_markup=await kb_setting_orders())
 
 
 # ============================  ДОБАВИТЬ ИЛИ УДАЛИТЬ АНАЛИЗЫ ПОСЛЕ ИХ ПОДТВЕРЖДЕНИЕ    ========================
@@ -249,18 +247,21 @@ async def process_save_pattern(call: CallbackQuery):
         if str(sequence) in result_numbers:
             summ_cash += price
 
-    keyboard = InlineKeyboardBuilder()
-    keyboard.button(text="сохранить \U0001F4BE", callback_data="get_to_analysis")
-    keyboard.button(text="назад \U000023EA", callback_data=f"setting_orders_then_config_{date}")
-    keyboard.adjust(1)
-    await call.message.answer(text=f"\U0001F4DD <b>Список анализов:</b> "
-                                   f"\n{dict_analysis[0]}"
-                                   f"\n<b>==============================</b>"
-                                   f"\n\U0001F4B5<b>Сумма:</b> {summ_cash} \U000020BD"
-                                   f"\n<b>==============================</b>"
-                                   f"\n\u203CПри сохранении, в шаблоне остаются только списки анализов! Их можно "
-                                   f"оформить при создании новой заявки в разделе >>>  \U0001F6D2 Корзина",
-                              reply_markup=keyboard.as_markup())
+    async def kb_save_pattern():
+        keyboard = InlineKeyboardBuilder()
+        keyboard.button(text="сохранить \U0001F4BE", callback_data="get_to_analysis")
+        keyboard.button(text="назад \U000023EA", callback_data=f"setting_orders_then_config_{date}")
+        keyboard.adjust(1)
+        return keyboard.as_markup()
+
+    await call.message.edit_text(text=f"\U0001F4DD <b>Список анализов:</b> "
+                                      f"\n{dict_analysis[0]}"
+                                      f"\n<b>==============================</b>"
+                                      f"\n\U0001F4B5<b>Сумма:</b> {summ_cash} \U000020BD"
+                                      f"\n<b>==============================</b>"
+                                      f"\n\u203CПри сохранении, в шаблоне остаются только списки анализов! Их можно "
+                                      f"оформить при создании новой заявки в разделе >>>  \U0001F6D2 Корзина",
+                                 reply_markup=await kb_save_pattern())
 
 
 # ============================  ПОИСК АНАЛИЗОВ ПОСЛЕ ПОДТВЕРЖДЕНИЯ ЗАЯВКИ    ========================
@@ -268,21 +269,26 @@ async def process_save_pattern(call: CallbackQuery):
 async def process_save_pattern_after(call: CallbackQuery, state: FSMContext):
     global last_bot_message_id
     await state.set_state(States.waiting_for_save_pattern_name)
-    await call.message.answer(text="Введите название шаблона: ")
+    await call.message.edit_text(text="Введите название шаблона: ")
 
 
 # =====сохраняем шаблон
 @router.message(States.waiting_for_save_pattern_name)
 async def process_save_pattern_after_confirm(message: Message, state: FSMContext):
     user_id = message.chat.id
-    global result_numbers
+    global result_numbers, transfer_date
     input_text = message.text
     str_numbers_for_save_analysis = ", ".join(result_numbers)
 
     pattern_db.execute(f"""INSERT OR IGNORE INTO user_{user_id} (date, name_pattern, analysis_numbers) 
     VALUES (?, ?, ?)""", (transfer_date, input_text, str_numbers_for_save_analysis))
     connect_pattern.commit()
-    await message.answer(text="\u2705 Шаблон сохранен! ")
+
+    keyboard = InlineKeyboardBuilder()
+    keyboard.button(text="назад \U000023EA", callback_data=f"ordersShow_{transfer_date}")
+    keyboard.adjust(1)
+
+    await message.answer(text="\u2705 Шаблон сохранен! ", reply_markup=keyboard.as_markup())
     result_numbers.clear()
     await state.clear()
 
@@ -292,15 +298,17 @@ async def process_save_pattern_after_confirm(message: Message, state: FSMContext
 async def process_transfer_orders(call: CallbackQuery):
     date = call.data.split("transferOrders_")[1]
 
-    keyboard = InlineKeyboardBuilder()
-    keyboard.button(text="назад \U000023EA", callback_data=f"setting_orders_then_config_{date}")
-    keyboard.button(text="\U0001F6D2 Корзина", callback_data="back_to_basket_menu")
-    keyboard.adjust(1)
-    await call.message.answer(text=f"\n\u203CВНИМАТЕЛЬНО"
-                                   f"\n1) Сохраните шаблон"
-                                   f"\n2) Перейдите в >>>\U0001F6D2 Корзина"
-                                   f"\n3) Оформите заявку с новой датой",
-                              reply_markup=keyboard.as_markup())
+    async def kb_back():
+        keyboard = InlineKeyboardBuilder()
+        keyboard.button(text="назад \U000023EA", callback_data=f"setting_orders_then_config_{date}")
+        keyboard.adjust(1)
+        return keyboard.as_markup()
+
+    await call.message.edit_text(text=f"\n\u203CВНИМАТЕЛЬНО"
+                                      f"\n1) Сохраните шаблон"
+                                      f"\n2) Перейдите в >>>\U0001F6D2 Корзина"
+                                      f"\n3) Оформите заявку с новой датой",
+                                 reply_markup=await kb_back())
 
 
 # ==========================================================================================================
@@ -333,10 +341,6 @@ async def process_archive_the_order(call: CallbackQuery):
         )""")
     connect_archive.commit()
 
-    keyboard = InlineKeyboardBuilder()
-    keyboard.button(text="назад \U000023EA", callback_data="back_to_orders")
-    keyboard.adjust(1)
-
     # ========================================================================================================
     # выводим данные из БД basket.db готовую заявку из таблицы user_{user_id}
     basket_db.execute(f"""SELECT * FROM user_{user_id} WHERE id_date = ?""", (date,))
@@ -360,4 +364,10 @@ async def process_archive_the_order(call: CallbackQuery):
     basket_db.execute(f"""DELETE FROM user_{user_id} WHERE id_date = ?""", (date,))
     conn_basket.commit()
 
-    await call.message.edit_text(text="\U0001F4C7 добавлен в архив", reply_markup=keyboard.as_markup())
+    async def kb_back():
+        keyboard = InlineKeyboardBuilder()
+        keyboard.button(text="назад \U000023EA", callback_data="back_to_orders")
+        keyboard.adjust(1)
+        return keyboard.as_markup()
+
+    await call.message.edit_text(text="\U0001F4C7 добавлен в архив", reply_markup=await kb_back())

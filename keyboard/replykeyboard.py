@@ -17,3 +17,4 @@ def reply_menu():
     reply_keyboard_menu.adjust(3)
 
     return reply_keyboard_menu.as_markup(resize_keyboard=True)
+
