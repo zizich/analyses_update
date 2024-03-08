@@ -5,8 +5,8 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from core.fsm_engine import States
-from data_base import cursor_db, conn, basket_db, job_db, conn_basket
-from keyboard import kb_edit_profile, edit_user, choice_city
+from data_base import cursor_db, conn, basket_db, conn_basket
+from keyboard import edit_user
 from keyboard.replykeyboard import reply_keyboard_menu
 
 router = Router(name=__name__)

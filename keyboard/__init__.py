@@ -1,6 +1,5 @@
 from .replykeyboard import reply_keyboard_menu
 from .kb_edit_profile import edit_user
-from .kb_edit_other import edit_people, back_to_edit_people, choice_city
 from .kb_basket_menu import basket_menu_first
 from .kb_basket_who_add import inline_choice_back
 from .kb_basket_delivery import delivery_in_basket
