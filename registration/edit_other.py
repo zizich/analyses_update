@@ -6,203 +6,137 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from core.fsm_engine import States
 from data_base import cursor_db, conn, job_db, basket_db, conn_basket
-from keyboard import edit_people_one, choice_city
+from keyboard import edit_people, choice_city
 
 router = Router(name=__name__)
+user_id_num = 0
 
 
-@router.callback_query(lambda c: c.data in ["edit_people_one", "add_people_one"])
-async def process_edit_people_one(call: CallbackQuery):
-
-    await call.message.edit_text(text="Редактировать/Добавить: ", reply_markup=await edit_people_one())
-
-
-@router.callback_query(F.data == "people_name_one")
+@router.callback_query(F.data.startswith("people_"))
 async def process_edit_name_one(call: CallbackQuery, state: FSMContext):
-    await state.set_state(States.waiting_for_edit_name_people_one)
-    await call.message.edit_text(text='Введите имя: ')
+    global user_id_num
+    user_id_num = call.data.split("people_")[1]
+    await state.set_state(States.waiting_for_add_fio_people_one)
+    await call.message.edit_text(text='Введите ФИО: ')
 
 
 # ==========================ОБРАБОТКА СТАТУСА "НАЗАД" ПОСЛЕ РЕДАКТИРОВАНИЯ ИМЕНИ 1-ГО ЧЕЛОВЕКА========
-@router.message(States.waiting_for_edit_name_people_one)
+@router.message(States.waiting_for_add_fio_people_one)
 async def process_edit_name_one(message: Message, state: FSMContext):
-    await state.update_data(waiting_for_edit_name_people_one=message.text)
-    cursor_db.execute("""UPDATE users SET others_name_one = ? WHERE user_id = ?""",
-                      (message.text, message.from_user.id))
-    conn.commit()
-    keyboard = InlineKeyboardBuilder()
-    keyboard.button(text="назад", callback_data="edit_people_one")
-    await message.answer(text="Сохранено", reply_markup=keyboard.as_markup())
-    await state.clear()
+    await state.update_data(waiting_for_add_fio_people_one=message.text)
+    await state.set_state(States.waiting_for_edit_birth_date_people_one)
+    data = await state.get_data()
+    await message.answer(text=f"\u267B\uFE0F ФИО: {data['waiting_for_add_fio_people_one']}"
+                              f"\n========================="
+                              '\nВведите дату рождения (дд.мм.гггг): ')
 
 
-# изменить фамилию первого ребенка 1-ГО ЧЕЛОВЕКА
-@router.callback_query(F.data == "people_female_one")
-async def process_edit_female_one(call: CallbackQuery, state: FSMContext):
-    await state.set_state(States.waiting_for_edit_female_people_one)
-    await call.message.edit_text(text='Введите фамилию: ')
-
-
-# ==========================ОБРАБОТКА СТАТУСА "НАЗАД" ПОСЛЕ РЕДАКТИРОВАНИЯ ФАМИЛИИ 1-ГО ЧЕЛОВЕКА==========
-@router.message(States.waiting_for_edit_female_people_one)
+@router.message(States.waiting_for_edit_birth_date_people_one)
 async def process_edit_female_one_done(message: Message, state: FSMContext):
-    await state.update_data(waiting_for_edit_female_people_one=message.text)
-    cursor_db.execute("""UPDATE users SET others_female_one = ? WHERE user_id = ?""",
-                      (message.text, message.from_user.id))
-    conn.commit()
-    keyboard = InlineKeyboardBuilder()
-    keyboard.button(text="назад", callback_data="edit_people_one")
-    await message.answer(text="Сохранено", reply_markup=keyboard.as_markup())
-    await state.clear()
+    await state.update_data(waiting_for_edit_birth_date_people_one=message.text)
+    await state.set_state(States.waiting_for_edit_phone_people_one)
+    data = await state.get_data()
+    await message.answer(text=f"\u267B\uFE0F ФИО: {data['waiting_for_add_fio_people_one']}"
+                              f"\n\u267B\uFE0F Дата рождения: {data['waiting_for_edit_birth_date_people_one']}"
+                              f"\n========================="
+                              '\nВведите номер телефона (8911-222-33-44):')
 
 
 # изменить отчество первого ребенка 1-ГО ЧЕЛОВЕКА
-@router.callback_query(F.data == "people_patronymic_one")
-async def process_edit_patronymic_one(call: CallbackQuery, state: FSMContext):
-    await state.set_state(States.waiting_for_edit_patronymic_people_one)
-    await call.message.edit_text(text='Введите отчество: ')
-
-
-# ==========================ОБРАБОТКА СТАТУСА "НАЗАД" ПОСЛЕ РЕДАКТИРОВАНИЯ ОТЧЕСТВА 1-ГО ЧЕЛОВЕКА==========
-@router.message(States.waiting_for_edit_patronymic_people_one)
-async def process_edit_patronymic_one_done(message: Message, state: FSMContext):
-    await state.update_data(waiting_for_edit_patronymic_people_one=message.text)
-    cursor_db.execute("""UPDATE users SET others_patronymic_one = ? WHERE user_id = ?""",
-                      (message.text, message.from_user.id))
-    conn.commit()
-    keyboard = InlineKeyboardBuilder()
-    keyboard.button(text="назад", callback_data="edit_people_one")
-    await message.answer(text="Сохранено", reply_markup=keyboard.as_markup())
-    await state.clear()
-
-
-# изменить дату рождения первого ребенка 1-ГО ЧЕЛОВЕКА
-@router.callback_query(F.data == "people_birth_day_one")
-async def process_edit_birth_day_one(call: CallbackQuery, state: FSMContext):
-    await state.set_state(States.waiting_for_edit_birth_date_people_one)
-    await call.message.edit_text(text='Введите дату рождения: (дд.мм.гггг) ')
-
-
-# ==========================ОБРАБОТКА КНОПКИ РЕДАКТИРОВАНИЯ ДАТУ РОЖДЕНИЯ 1-ГО ЧЕЛОВЕКА=======
-@router.message(States.waiting_for_edit_birth_date_people_one)
-async def process_edit_birth_day_one_done(message: Message, state: FSMContext):
-    await state.update_data(waiting_for_edit_birth_date_people_one=message.text)
-    cursor_db.execute("""UPDATE users SET others_birth_date_one = ? WHERE user_id = ?""",
-                      (message.text, message.from_user.id))
-    conn.commit()
-    keyboard = InlineKeyboardBuilder()
-    keyboard.button(text="назад", callback_data="edit_people_one")
-    await message.answer(text="Сохранено", reply_markup=keyboard.as_markup())
-    await state.clear()
-
-
-# изменить номер телефона 1-ГО ЧЕЛОВЕКА
-
-@router.callback_query(F.data == "people_phone_one")
-async def process_edit_birth_day_one(call: CallbackQuery, state: FSMContext):
-    await state.set_state(States.waiting_for_edit_phone_people_one)
-    await call.message.edit_text(text='Введите номер телефона:')
-
-
-# ==========================ОБРАБОТКА КНОПКИ РЕДАКТИРОВАНИЯ НОМЕРА ТЕЛЕФОНА 1-ГО ЧЕЛОВЕКА=======
 @router.message(States.waiting_for_edit_phone_people_one)
-async def process_edit_birth_day_one_done(message: Message, state: FSMContext):
+async def process_edit_patronymic_one_done(message: Message, state: FSMContext):
     await state.update_data(waiting_for_edit_phone_people_one=message.text)
-    cursor_db.execute("""UPDATE users SET others_phone_one = ? WHERE user_id = ?""",
-                      (message.text, message.from_user.id))
-    conn.commit()
-    keyboard = InlineKeyboardBuilder()
-    keyboard.button(text="назад", callback_data="edit_people_one")
-    await message.answer(text="Сохранено", reply_markup=keyboard.as_markup())
-    await state.clear()
-
-
-# изменить номер e-mail 1-ГО ЧЕЛОВЕКА
-
-@router.callback_query(F.data == "people_email_one")
-async def process_edit_birth_day_one(call: CallbackQuery, state: FSMContext):
     await state.set_state(States.waiting_for_edit_email_people_one)
-    await call.message.edit_text(text='Введите email: (info@info.in)')
+    data = await state.get_data()
+    await message.answer(text=f"\u267B\uFE0F ФИО: {data['waiting_for_add_fio_people_one']}"
+                              f"\n\u267B\uFE0F Дата рождения: {data['waiting_for_edit_birth_date_people_one']}"
+                              f"\n\u267B\uFE0F Номер телефона: {data['waiting_for_edit_phone_people_one']}"
+                              f"\n========================="
+                              '\nВведите e-mail (эл.почта): ')
 
 
-# ==========================ОБРАБОТКА КНОПКИ РЕДАКТИРОВАНИЯ e-mail 1-ГО ЧЕЛОВЕКА=======
 @router.message(States.waiting_for_edit_email_people_one)
 async def process_edit_birth_day_one_done(message: Message, state: FSMContext):
     await state.update_data(waiting_for_edit_email_people_one=message.text)
-    cursor_db.execute("""UPDATE users SET others_email_one = ? WHERE user_id = ?""",
-                      (message.text, message.from_user.id))
-    conn.commit()
-    keyboard = InlineKeyboardBuilder()
-    keyboard.button(text="назад", callback_data="edit_people_one")
-    await message.answer(text="Сохранено", reply_markup=keyboard.as_markup())
-    await state.clear()
-
-
-# изменить номер адрес 1-ГО ЧЕЛОВЕКА
-@router.callback_query(F.data == "city_people_one")
-async def process_city_people_one(call: CallbackQuery):
-    await call.message.edit_text(text="\U0001F3D8 Выберите населенный пункт:",
-                                 reply_markup=await choice_city())
-
-
-@router.callback_query(F.data.startswith("cityOtherAdd_"))
-async def process_add_city_people_one(call: CallbackQuery):
-    user_id = call.message.chat.id
-
-    # #1 проверяем инициализирован ли город?
-
-    try:
-        city_found = basket_db.execute("""SELECT city FROM users WHERE user_id = ?""",
-                                       (user_id,)).basket_db.fetchone()[0]
-
-        basket_db.execute("""DELETE city FROM users WHERE user_id = ?""", (user_id,))
-        conn_basket.commit()
-        city_found.clear()
-    except (TypeError, AttributeError):
-        pass
-
-    city = call.data.split("cityOtherAdd_")[1]
-
-    basket_db.execute("""UPDATE users SET city = ? WHERE user_id = ?""", (city, user_id))
-    conn_basket.commit()
-
-    cursor_db.execute(f"""UPDATE users SET others_city = ? WHERE user_id = ?""", (city, user_id))
-    conn.commit()
-
-    keyboard = InlineKeyboardBuilder()
-    keyboard.button(text="назад", callback_data="edit_people_one")
-
-    await call.message.answer(text=f"Город: {city} успешно сохранен!", reply_markup=keyboard.as_markup())
-
-
-@router.callback_query(F.data == "people_adress_one")
-async def process_edit_birth_day_one(call: CallbackQuery, state: FSMContext):
     await state.set_state(States.waiting_for_edit_address_people_one)
-    await call.message.edit_text(text='Введите адрес забора биоматериалов: ')
+    data = await state.get_data()
+    await message.answer(text=f"\u267B\uFE0F ФИО: {data['waiting_for_add_fio_people_one']}"
+                              f"\n\u267B\uFE0F Дата рождения: {data['waiting_for_edit_birth_date_people_one']}"
+                              f"\n\u267B\uFE0F Номер телефона: {data['waiting_for_edit_phone_people_one']}"
+                              f"\n\u267B\uFE0F Эл.почта: {data['waiting_for_edit_email_people_one']}"
+                              f"\n========================="
+                              '\nВведите адрес (без города):')
 
 
-# ==========================ОБРАБОТКА КНОПКИ РЕДАКТИРОВАНИЯ АДРЕСА 1-ГО ЧЕЛОВЕКА=======
 @router.message(States.waiting_for_edit_address_people_one)
 async def process_edit_birth_day_one_done(message: Message, state: FSMContext):
     await state.update_data(waiting_for_edit_address_people_one=message.text)
-    cursor_db.execute("""UPDATE users SET others_address_one = ? WHERE user_id = ?""",
-                      (message.text, message.from_user.id))
-    conn.commit()
+
     keyboard = InlineKeyboardBuilder()
-    keyboard.button(text="назад", callback_data="edit_people_one")
-    await message.answer(text="Сохранено", reply_markup=keyboard.as_markup())
+
+    job_db.execute("""SELECT * FROM services""")
+    for i, (city, sampling, out_pay, address, phone, bank, all_sale) in enumerate(job_db.fetchall(), start=1):
+        keyboard.button(text=f"{city} \u23E9", callback_data=f"addCity_{city}")
+
+    keyboard.adjust(1)
+    data = await state.get_data()
+    await message.answer(text=f"\u267B\uFE0F ФИО: {data['waiting_for_add_fio_people_one']}"
+                              f"\n\u267B\uFE0F Дата рождения: {data['waiting_for_edit_birth_date_people_one']}"
+                              f"\n\u267B\uFE0F Номер телефона: {data['waiting_for_edit_phone_people_one']}"
+                              f"\n\u267B\uFE0F Эл.почта: {data['waiting_for_edit_email_people_one']}"
+                              f"\n\u267B\uFE0F Адрес: {data['waiting_for_edit_address_people_one']}"
+                              f"\n========================="
+                              '\nВыберите город:',
+                         reply_markup=keyboard.as_markup())
+
+
+@router.callback_query(F.data.startswith('addCity_'))
+async def add_all_info(call: CallbackQuery, state: FSMContext):
+    global user_id_num
+    user_id = call.message.chat.id
+    city = call.data.split("addCity_")[1]
+    data = await state.get_data()
+
+    # Распаковываем значения из словаря
+    fio = data['waiting_for_add_fio_people_one']
+    birth_date = data['waiting_for_edit_birth_date_people_one']
+    phone = data['waiting_for_edit_phone_people_one']
+    email = data['waiting_for_edit_email_people_one']
+    address = data['waiting_for_edit_address_people_one']
+
+    # Обновляем базу данных
+    cursor_db.execute(
+        f"""INSERT OR IGNORE INTO users_{user_id} VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (f"{user_id_num}", fio, birth_date, phone, email, city, address, None, None))
+    conn.commit()
+    user_id_num = 0
     await state.clear()
+    await call.message.answer(text=f"Данные успешно сохранены")
+    # await call.message.answer(text=f"\u267B\uFE0F ФИО: {data['waiting_for_add_fio_people_one']}"
+    #                                f"\n\u267B\uFE0F Дата рождения: {data['waiting_for_edit_birth_date_people_one']}"
+    #                                f"\n\u267B\uFE0F Номер телефона: {data['waiting_for_edit_phone_people_one']}"
+    #                                f"\n\u267B\uFE0F Эл.почта: {data['waiting_for_edit_email_people_one']}"
+    #                                f"\n\u267B\uFE0F Город: {city}"
+    #                                f"\n\u267B\uFE0F Адрес: {data['waiting_for_edit_address_people_one']}")
 
 
-# ================================ УДАЛИТЬ 1-го ЧЕЛОВЕКА ========================================
-@router.callback_query(F.data == "delete_people_one")
+# ================================ УДАЛИТЬ  ЧЕЛОВЕКА ========================================
+@router.callback_query(F.data == "delPeople_")
 async def process_delete_people_one(call: CallbackQuery):
     user_id = call.message.chat.id
-    tables = ["others_name_one", "others_female_one", "others_patronymic_one", "others_birth_date_one",
-              "others_phone_one", "others_email_one", "others_address_one"]
+    num = call.data.split("deletePeople_")[1]
 
-    for table in tables:
-        cursor_db.execute(f"""UPDATE users SET {table} = NULL WHERE user_id = ? """, (user_id,))
-        conn.commit()
+    cursor_db.execute(f"""DELETE FROM users_{user_id} WHERE user_id = ? """, (f"{num}",))
+    conn.commit()
 
     await call.message.edit_text(text="удален!")
+
+
+# ================================ Редактировать  ЧЕЛОВЕКА ========================================
+@router.callback_query(F.data == "editPeople_")
+async def process_edit_people(call: CallbackQuery):
+    user_id = call.data.split("editPeople_")[1]
+    await call.message.edit_text(text="Для редакции выберите кнопку:", reply_markup=await edit_people(user_id))
+
+
+

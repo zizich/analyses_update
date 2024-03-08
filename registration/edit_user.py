@@ -7,7 +7,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from core.fsm_engine import States
 from data_base import cursor_db, conn, basket_db, job_db, conn_basket
 from keyboard import kb_edit_profile, edit_user, choice_city
-from keyboard.replykeyboard import reply_menu
+from keyboard.replykeyboard import reply_keyboard_menu
 
 router = Router(name=__name__)
 
@@ -19,61 +19,20 @@ async def process_edit_profile(call: CallbackQuery):
 
 
 # ==================================ОБРАБОТКА КНОПКИ "РЕДАКТИРОВАТЬ ИМЯ"=====================================
-@router.callback_query(F.data == "edit_name_user")
+@router.callback_query(F.data == "edit_fio_user")
 async def process_edit_name_user(call: CallbackQuery, state: FSMContext):
-    await state.set_state(States.waiting_for_edit_name_user)
+    await state.set_state(States.waiting_for_edit_fio_user)
     await call.message.edit_text(text='Редактирование основного профиля:'
-                                      '\nВведите имя:')
+                                      '\nВведите ФИО:')
 
 
 # ===============================ОБРАБОТКА КНОПКИ "НАЗАД" ПОСЛЕ РЕДАКТИРОВАНИЯ ИМЕНИ==========================
-@router.message(States.waiting_for_edit_name_user)
+@router.message(States.waiting_for_edit_fio_user)
 async def process_edit_name_user_back(message: Message, state: FSMContext):
-    await state.update_data(waiting_for_edit_name_user=message.text)
-    cursor_db.execute("""UPDATE users SET name = ? WHERE user_id = ?""",
-                      (message.text, message.from_user.id))
-    conn.commit()
-    await state.clear()
-    kb = InlineKeyboardBuilder()
-    kb.button(text="назад", callback_data="edit_profile")
-    await message.answer(text="Данные успешно сохранены!", reply_markup=kb.adjust(1).as_markup())
-
-
-# ==================================ОБРАБОТКА КНОПКИ "РЕДАКТИРОВАТЬ ФАМИЛИЮ"=====================================
-@router.callback_query(F.data == "edit_female_user")
-async def process_edit_female_user(call: CallbackQuery, state: FSMContext):
-    await state.set_state(States.waiting_for_edit_female_user)
-    await call.message.edit_text(text='Редактирование основного профиля:'
-                                      '\nВведите фамилию:')
-
-
-# ===============================ОБРАБОТКА СТАТУСА "НАЗАД" ПОСЛЕ РЕДАКТИРОВАНИЯ ФАМИЛИИ==========================
-@router.message(States.waiting_for_edit_female_user)
-async def process_edit_female_user_back(message: Message, state: FSMContext):
-    await state.update_data(waiting_for_edit_female_user=message.text)
-    cursor_db.execute("""UPDATE users SET female = ? WHERE user_id = ?""",
-                      (message.text, message.from_user.id))
-    conn.commit()
-    await state.clear()
-    kb = InlineKeyboardBuilder()
-    kb.button(text="назад", callback_data="edit_profile")
-    await message.answer(text="Данные успешно сохранены!", reply_markup=kb.adjust(1).as_markup())
-
-
-# ==================================ОБРАБОТКА КНОПКИ "РЕДАКТИРОВАТЬ ОТЧЕСТВО"=====================================
-@router.callback_query(F.data == "edit_patronymic_user")
-async def process_edit_patronymic_user(call: CallbackQuery, state: FSMContext):
-    await state.set_state(States.waiting_for_edit_patronymic_user)
-    await call.message.edit_text(text='Редактирование основного профиля:'
-                                      '\nВведите отчество:')
-
-
-# ===============================ОБРАБОТКА СТАТУСА "НАЗАД" ПОСЛЕ РЕДАКТИРОВАНИЯ ОТЧЕСТВА==========================
-@router.message(States.waiting_for_edit_patronymic_user)
-async def process_edit_patronymic_user_back(message: Message, state: FSMContext):
-    await state.update_data(waiting_for_edit_patronymic_user=message.text)
-    cursor_db.execute("""UPDATE users SET patronymic = ? WHERE user_id = ?""",
-                      (message.text, message.from_user.id))
+    user_id = message.chat.id
+    await state.update_data(waiting_for_edit_fio_user=message.text)
+    cursor_db.execute(f"""UPDATE users_{user_id} SET fio = ? WHERE user_id = ?""",
+                      (message.text, f"{message.from_user.id}-1"))
     conn.commit()
     await state.clear()
     kb = InlineKeyboardBuilder()
@@ -92,9 +51,10 @@ async def process_edit_birth_date_user(call: CallbackQuery, state: FSMContext):
 # ===============================ОБРАБОТКА СТАТУСА "НАЗАД" ПОСЛЕ РЕДАКТИРОВАНИЯ ДАТЫ РОЖДЕНИЯ==========================
 @router.message(States.waiting_for_edit_birth_date_user)
 async def process_edit_birth_date_user_back(message: Message, state: FSMContext):
+    user_id = message.chat.id
     await state.update_data(waiting_for_edit_birth_date_user=message.text)
-    cursor_db.execute("""UPDATE users SET birth_date = ? WHERE user_id = ?""",
-                      (message.text, message.from_user.id))
+    cursor_db.execute(f"""UPDATE users_{user_id} SET birth_date = ? WHERE user_id = ?""",
+                      (message.text, f"{message.from_user.id}-1"))
     conn.commit()
     await state.clear()
     kb = InlineKeyboardBuilder()
@@ -113,9 +73,10 @@ async def process_edit_phone_user(call: CallbackQuery, state: FSMContext):
 # ==========================ОБРАБОТКА СТАТУСА "НАЗАД" ПОСЛЕ РЕДАКТИРОВАНИЯ НОМЕРА ТЕЛЕФОНА==========================
 @router.message(States.waiting_for_edit_phone_user)
 async def process_edit_phone_user_back(message: Message, state: FSMContext):
+    user_id = message.chat.id
     await state.update_data(waiting_for_edit_phone_user=message.text)
-    cursor_db.execute("""UPDATE users SET phone = ? WHERE user_id = ?""",
-                      (message.text, message.from_user.id))
+    cursor_db.execute(f"""UPDATE users_{user_id} SET phone = ? WHERE user_id = ?""",
+                      (message.text, f"{message.from_user.id}-1"))
     conn.commit()
     await state.clear()
     kb = InlineKeyboardBuilder()
@@ -134,9 +95,10 @@ async def process_edit_email_user(call: CallbackQuery, state: FSMContext):
 # ==========================ОБРАБОТКА СТАТУСА "НАЗАД" ПОСЛЕ РЕДАКТИРОВАНИЯ ЭЛЕКТРОННОЙ ПОЧТЫ========================
 @router.message(States.waiting_for_edit_email_user)
 async def process_edit_email_user_back(message: Message, state: FSMContext):
+    user_id = message.chat.id
     await state.update_data(waiting_for_edit_email_user=message.text)
-    cursor_db.execute("""UPDATE users SET email = ? WHERE user_id = ?""",
-                      (message.text, message.from_user.id))
+    cursor_db.execute(f"""UPDATE users_{user_id} SET email = ? WHERE user_id = ?""",
+                      (message.text, f"{message.from_user.id}-1"))
     conn.commit()
     await state.clear()
     kb = InlineKeyboardBuilder()
@@ -169,7 +131,7 @@ async def process_add_city(call: CallbackQuery):
     basket_db.execute("""UPDATE users SET city = ? WHERE user_id = ?""", (city, user_id))
     conn_basket.commit()
 
-    cursor_db.execute(f"""UPDATE users SET city = ? WHERE user_id = ?""", (city, user_id))
+    cursor_db.execute(f"""UPDATE users_{user_id} SET city = ? WHERE user_id = ?""", (city, f"{user_id}-1"))
     conn.commit()
 
     kb = InlineKeyboardBuilder()
@@ -188,11 +150,12 @@ async def process_edit_address_user(call: CallbackQuery, state: FSMContext):
 # =================ОБРАБОТКА СТАТУСА "НАЗАД" ПОСЛЕ РЕДАКТИРОВАНИЯ АДРЕСА ЗАБОРА КРОВИ========================
 @router.message(States.waiting_for_edit_address_user)
 async def process_edit_edit_address_user(message: Message, state: FSMContext):
+    user_id = message.chat.id
     await state.update_data(waiting_for_edit_address_user=message.text)
-    cursor_db.execute("""UPDATE users SET address = ? WHERE user_id = ?""",
-                      (message.text, message.from_user.id))
+    cursor_db.execute(f"""UPDATE users_{user_id} SET address = ? WHERE user_id = ?""",
+                      (message.text, f"{message.from_user.id}-1"))
     conn.commit()
     await state.clear()
     await message.answer(text="&#128657")
     await message.answer(text="Данные успешно сохранены!",
-                         reply_markup=reply_menu())
+                         reply_markup=reply_keyboard_menu)

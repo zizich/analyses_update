@@ -1,3 +1,5 @@
+import asyncio
+
 import aiogram.exceptions
 from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
@@ -12,7 +14,6 @@ from data_base import basket_db, conn_basket, add_db, date_person_db, job_db, cu
     connect_person_date, pattern_db, all_analysis_db, connect_added, profit_db, connect_profit, connect_pattern, \
     profit_income_db, connect_profit_income, order_done_db, connect_order_done
 from keyboard import delivery_in_basket, gth_after_add_date, kb_patterns
-from keyboard.kb_basket_who_childs import add_childs_in_basket, childs_in_basket
 from keyboard.kb_basket_who_add import inline_choice
 from keyboard.kb_basket_menu import basket_menu, basket_menu_first
 
@@ -1009,12 +1010,11 @@ async def process_confirm_the_order(call: CallbackQuery):
         kb_conf.adjust(1)
         return kb_conf.as_markup()
 
-    await call.answer("\U0000203C \U0000FE0F После подтверждения заявки, невозможно его отредактировать!"
-                      "\n\U0000203C \U0000FE0FВсе данные с КОРЗИНЫ исчезнут!"
-                      "\n\U0000203C \U0000FE0FПроверьте личные данные, список "
-                      "анализов и общую сумму оплаты!", show_alert=True)
-    await call.message.edit_text(text="Если, данные верны, то можете подтвердить заявку.",
-                                 reply_markup=await kb_confirm())
+    await call.message.edit_text(
+        text="1. После подтверждения заявки, невозможно его отредактировать!"
+             "\n2. Все данные с КОРЗИНЫ исчезнут!"
+             "\n3. Проверьте личные данные, список "
+             "анализов и общую сумму оплаты!", reply_markup=await kb_confirm())
 
 
 # =================================================================================================================
@@ -1043,6 +1043,7 @@ async def process_confirm_basket(call: CallbackQuery):
         kb_confirm_back.button(text="назад ", callback_data="back_to_basket_menu")
         kb_confirm_back.adjust(1)
         return kb_confirm_back.as_markup()
+
     # ===================================================================================================
 
     # =========================РАБОТА С БАЗОЙ ДАННЫХ ВЫБРАННЫХ ЗНАЧЕНИЙ==================================
@@ -1193,6 +1194,16 @@ async def process_confirm_basket(call: CallbackQuery):
                                                                               f"{result_date}_{id_midwiferys}"))
         midwifery_conn.commit()
 
+        count = 4
+        text = "  " * count
+        message_id = await call.message.edit_text("Формируется заявка" + text)
+        for i in range(count):
+            text = text.replace(" ", ".", 1)
+            await call.message.bot.edit_message_text(text="Формируется заявка" + text,
+                                                     chat_id=call.message.chat.id,
+                                                     message_id=message_id.message_id)
+            await asyncio.sleep(1)
+
         await call.answer("Заявка успешно оформлена! "
                           "\nВаши данные переданы в ЗАЯВКИ \U000027A1"
                           "\nСписок заявок закреплена значком \U0000274C, "
@@ -1200,5 +1211,5 @@ async def process_confirm_basket(call: CallbackQuery):
                           "\nзначок сменится на \u2705", show_alert=True)
         await call.message.answer(text="\U0001F389")
         await call.message.answer_photo(
-            photo="AgACAgIAAxkBAAJaUmXkgIypNZezMXiIP8b4-kcYPsQzAAIV3zEbKoshS6JQCPwGmMncAQADAgADeAADNAQ"
-        )
+            photo="https://cdn.pixabay.com/photo/2024/03/06/16/38/application-8616753_1280.jpg",
+            caption="Переходите в заявки")

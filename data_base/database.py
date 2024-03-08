@@ -14,58 +14,6 @@ else:
 conn = sq.connect(path_users)
 cursor_db = conn.cursor()
 
-cursor_db.execute("""CREATE TABLE IF NOT EXISTS users(
-    user_id INTEGER PRIMARY KEY,
-    name TEXT,
-    female TEXT,
-    patronymic TEXT,
-    birth_date TEXT,
-    phone INTEGER,
-    email TEXT,
-    address TEXT,
-    city TEXT,
-    subscribe_date_doctor TEXT, 
-    photo_analysis BLOB,
-    child_name TEXT,
-    child_female TEXT,
-    child_patronymic TEXT,
-    child_birth_date TEXT,
-    child_subscribe_date_analysis TEXT,
-    child_subscribe_date_doctor TEXT, 
-    child_photo_analysis BLOB,
-    two_child_name TEXT,
-    two_child_female TEXT,
-    two_child_patronymic TEXT,
-    two_child_birth_date TEXT,
-    two_child_subscribe_date_analysis TEXT,
-    two_child_subscribe_date_doctor TEXT, 
-    two_child_photo_analysis BLOB,
-    three_child_name TEXT,
-    three_child_female TEXT,
-    three_child_patronymic TEXT,
-    three_child_birth_date TEXT,
-    three_child_subscribe_date_analysis TEXT,
-    three_child_subscribe_date_doctor TEXT, 
-    three_child_photo_analysis BLOB,
-    four_child_name TEXT,
-    four_child_female TEXT,
-    four_child_patronymic TEXT,
-    four_child_birth_date TEXT,
-    four_child_subscribe_date_analysis TEXT,
-    four_child_subscribe_date_doctor TEXT, 
-    four_child_photo_analysis BLOB,
-    others_name_one TEXT,
-    others_female_one TEXT,
-    others_patronymic_one TEXT,
-    others_birth_date_one TEXT,
-    others_phone_one INTEGER,
-    others_email_one TEXT,
-    others_address_one TEXT,
-    others_city TEXT,
-    others_subscribe_date_doctor_one TEXT, 
-    others_photo_analysis_one BLOB
-
-)""")
 
 # КОНТАКТИРОВАТЬ С БАЗОЙ ДАННЫХ КОРЗИНЫ
 path_basket = ""
@@ -77,22 +25,6 @@ else:
 conn_basket = sq.connect(path_basket)
 basket_db = conn_basket.cursor()
 
-basket_db.execute("""
-CREATE TABLE IF NOT EXISTS users(
-    user_id INTEGER PRIMARY KEY,
-    name TEXT,
-    female TEXT,
-    patronymic TEXT,
-    birth_date TEXT,
-    phone TEXT,
-    email TEXT,
-    address TEXT,
-    city TEXT,
-    delivery TEXT,
-    comment TEXT,
-    id_midwifery TEXT
-)
-""")
 
 #  TODO КОНТАКТИРОВАТЬ С БД ДАТЫ ВЫБОРА ФЕЛЬДШЕРОВ
 path_to_db = ""

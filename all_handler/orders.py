@@ -359,6 +359,7 @@ async def process_archive_the_order(call: CallbackQuery):
         #                    (date, name, analysis, price, address, city, delivery,
         #                     comm, confirm, id_midwifery))
         # connect_archive.commit()
+        break
 
     # удаляем данные из БД basket.db  таблицы user_{user_id}
     basket_db.execute(f"""DELETE FROM user_{user_id} WHERE id_date = ?""", (date,))

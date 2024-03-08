@@ -8,9 +8,9 @@ from aiogram import Bot, Dispatcher
 
 
 from config import BOT_TOKEN
-from all_handler import start_command_handler, profile, childs, other, search_analyses, basket, orders, archive, sale, \
+from all_handler import start_command_handler, profile, other, search_analyses, basket, orders, archive, sale, \
     feedback, doctors
-from registration import first_registration, edit_user, edit_childs, edit_other
+from registration import first_registration, edit_user, edit_other
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -32,8 +32,6 @@ async def main():
     dp.include_router(first_registration.router)
     dp.include_router(profile.router)
     dp.include_router(edit_user.router)
-    dp.include_router(childs.router)
-    dp.include_router(edit_childs.router)
     dp.include_router(other.router)
     dp.include_router(edit_other.router)
     dp.include_router(search_analyses.router)
