@@ -20,7 +20,8 @@ async def process_sale(message: Message):
     try:
         city = basket_db.execute("""SELECT city FROM users WHERE user_id = ?""", (user_id,)).fetchone()[0]
         if city is None:
-            city = cursor_db.execute("""SELECT city FROM users WHERE user_id = ?""", (user_id,)).fetchone()[0]
+            city = cursor_db.execute(f"""SELECT city FROM users_{user_id} WHERE user_id = ?""",
+                                     (f"{user_id}-1",)).fetchone()[0]
     except TypeError:
         city = cursor_db.execute("""SELECT city FROM users WHERE user_id = ?""", (user_id,)).fetchone()[0]
 

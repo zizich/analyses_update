@@ -33,3 +33,14 @@ async def choice_city():
     keyboard.adjust(1)
 
     return keyboard.as_markup()
+
+
+async def choice_edit_city():
+    keyboard = InlineKeyboardBuilder()
+
+    job_db.execute("""SELECT * FROM services""")
+    for i, (city, sampling, out_pay, address, phone, bank, all_sale) in enumerate(job_db.fetchall(), start=1):
+        keyboard.button(text=f"{city} \u23E9", callback_data=f"cityEdit_{city}")
+    keyboard.adjust(1)
+
+    return keyboard.as_markup()

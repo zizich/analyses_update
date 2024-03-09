@@ -7,7 +7,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from core.fsm_engine import States
 from data_base import cursor_db, conn, basket_db, conn_basket
 from keyboard import edit_user
-from keyboard.kb_edit_other import choice_city
+from keyboard.kb_edit_other import choice_city, choice_edit_city
 from keyboard.replykeyboard import reply_keyboard_menu
 
 router = Router(name=__name__)
@@ -110,7 +110,7 @@ async def process_edit_email_user_back(message: Message, state: FSMContext):
 # =============================ОБРАБОТКА КНОПКИ "РЕДАКТИРОВАТЬ ГОРОД"=========================
 @router.callback_query(F.data == "edit_city_user")
 async def process_edit_city_user(call: CallbackQuery):
-    await call.message.edit_text(text="\U0001F3D8 Выберите город:", reply_markup=await choice_city())
+    await call.message.edit_text(text="\U0001F3D8 Выберите город:", reply_markup=await choice_edit_city())
 
 
 @router.callback_query(F.data.startswith("cityEdit_"))
