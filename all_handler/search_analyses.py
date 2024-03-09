@@ -8,8 +8,8 @@ from core.any_process import translate_any_number_analysis
 from core.fsm_engine import States
 from core.search_algorithm import search_analyses, all_complex, all_complex_selected
 from data_base import basket_db, conn_basket, all_analysis_db, add_db, connect_added, \
-    profit_db, connect_profit, complex_analyses_db
-from keyboard import base_menu_analyses, info_by_analyses, kb_previous_search, kb_search_analyses_after_done, kb_complex
+    profit_db, connect_profit
+from keyboard import base_menu_analyses, info_by_analyses, kb_previous_search, kb_complex
 
 router = Router(name=__name__)
 
@@ -19,8 +19,8 @@ search_word = ""  # переменная для назначения анали�
 @router.message(F.text.in_(['\U0001F489 Анализы']))
 async def process_take_tests(message: Message):
     user_id = message.chat.id
-    basket_db.execute("""INSERT OR IGNORE INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                      (user_id, None, None, None, None, None, None, None, None, None, None, None))
+    basket_db.execute("""INSERT OR IGNORE INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                      (user_id, None, None, None, None, None, None, None, None, None))
     conn_basket.commit()
     keyboard = InlineKeyboardBuilder()
     keyboard.button(text="Комплексы \U0001F9EA", callback_data="group_buttons")

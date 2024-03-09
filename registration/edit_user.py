@@ -7,6 +7,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from core.fsm_engine import States
 from data_base import cursor_db, conn, basket_db, conn_basket
 from keyboard import edit_user
+from keyboard.kb_edit_other import choice_city
 from keyboard.replykeyboard import reply_keyboard_menu
 
 router = Router(name=__name__)
