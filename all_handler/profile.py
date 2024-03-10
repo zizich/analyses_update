@@ -9,33 +9,28 @@ from data_base import cursor_db
 router = Router(name=__name__)
 
 
-@router.message(F.text.in_(["\U0001F3E0 Профиль"]))
+@router.message(F.text.in_(["\U0001F3E0 Мой профиль"]))
 async def process_profile(message: Message):
     user_id = message.from_user.id
 
     try:
-        city = cursor_db.execute("""SELECT city FROM users WHERE user_id = ?""", (user_id,)).fetchone()[0]
-
-        cursor_db.execute("""SELECT user_id, name, female, patronymic, birth_date, phone, email, address
-         FROM users WHERE user_id = ?""", (user_id,))
+        cursor_db.execute(f"""SELECT user_id, fio, birth_date, phone, email, city, address
+         FROM users_{user_id} WHERE user_id = ?""", (f"{user_id}-1",))
         db_profile = cursor_db.fetchall()
         id_user = db_profile[0][0]
-        name = db_profile[0][1]
-        female = db_profile[0][2]
-        patronymic = db_profile[0][3]
-        birth_date = db_profile[0][4]
-        phone = db_profile[0][5]
-        email = db_profile[0][6]
-        home_address = db_profile[0][7]
+        fio = db_profile[0][1]
+        birth_date = db_profile[0][2]
+        phone = db_profile[0][3]
+        email = db_profile[0][4]
+        city = db_profile[0][5]
+        home_address = db_profile[0][6]
 
         keyboard = InlineKeyboardBuilder()
         keyboard.button(text="\U0001F58D редактировать", callback_data="edit_profile")
         keyboard.adjust(1)
         await message.answer(text="<b>\U0001F3E0 Профиль:</b>" + "\n" +
                                   f"     ♻️ Ваш id:   <b>{id_user}</b>" + "\n" +
-                                  f"     ♻️ Имя:   <b>{name}</b>" + "\n" +
-                                  f"     ♻️ Фамилия: <b>{female}</b>" + "\n" +
-                                  f"     ♻️ Отчество: <b>{patronymic}</b>" + "\n" +
+                                  f"     ♻️ ФИО:   <b>{fio}</b>" + "\n" +
                                   f"     ♻️ Дата рождения: <b>{birth_date}</b>" + "\n" +
                                   f"     ♻️ Номер телефона: <b>{phone}</b>" + "\n" +
                                   f"     ♻️ e-mail: <b>{email}</b>" + "\n" +

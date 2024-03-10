@@ -1,3 +1,5 @@
+import asyncio
+
 import aiogram.exceptions
 from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
@@ -5,14 +7,11 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-import keyboard.kb_basket_who_add
-from core.any_process import peoples_collection
 from core.fsm_engine import States
 from data_base import basket_db, conn_basket, add_db, date_person_db, job_db, cursor_db, date_add_db, midwifery_conn, \
     connect_person_date, pattern_db, all_analysis_db, connect_added, profit_db, connect_profit, connect_pattern, \
     profit_income_db, connect_profit_income, order_done_db, connect_order_done
 from keyboard import delivery_in_basket, gth_after_add_date, kb_patterns
-from keyboard.kb_basket_who_childs import add_childs_in_basket, childs_in_basket
 from keyboard.kb_basket_who_add import inline_choice
 from keyboard.kb_basket_menu import basket_menu, basket_menu_first
 
@@ -25,8 +24,8 @@ pattern_global = ""  # для получения наименование шаб
 @router.message(F.text.in_("\U0001F6D2 Корзина"))
 async def process_basket(message: Message):
     user_id = message.chat.id
-    basket_db.execute("""INSERT OR IGNORE INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                      (user_id, None, None, None, None, None, None, None, None, None, None, None))
+    basket_db.execute("""INSERT OR IGNORE INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                      (user_id, None, None, None, None, None, None, None, None, None))
     conn_basket.commit()
     #  После подтверждения заявки с БД basket.db удаляется вся инфо пользователя, соответственно при вызове сity
     #  выдает исключение, о том, что ячейка пустая. Решение: система try/except. Если, в basket.db нет инфы, мы
@@ -107,10 +106,9 @@ async def process_basket(message: Message):
         column_name = basket_db.fetchall()
         try:
             if column_name[0][2] is not None:
-                for i, (user_id, name, female, patronymic,
-                        birth_date, phone, email, address, city, comm, exit_or_not, id_midwifery) \
+                for i, (user_id, fio, birth_date, phone, email, address, city, comm, exit_or_not, id_midwifery) \
                         in enumerate(column_name, start=1):
-                    profile_info = f"{i}. {name} {female} {patronymic}\n{birth_date}\n{phone}\n{email}\n{address}"
+                    profile_info = f"{i}. {fio}\n{birth_date}\n{phone}\n{email}\n{address}"
                     profile.append(profile_info)
 
                 all_profile = "\n".join(profile)
@@ -158,6 +156,141 @@ async def process_basket(message: Message):
         await message.answer(text="Корзина пуста!")
 
 
+@router.callback_query(F.data == "back_to_basket_menu")
+async def process_back_to_basket(call: CallbackQuery):
+    user_id = call.message.chat.id
+    basket_db.execute("""INSERT OR IGNORE INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                      (user_id, None, None, None, None, None, None, None, None, None))
+    conn_basket.commit()
+    #  После подтверждения заявки с БД basket.db удаляется вся инфо пользователя, соответственно при вызове сity
+    #  выдает исключение, о том, что ячейка пустая. Решение: система try/except. Если, в basket.db нет инфы, мы
+    #  будем брать его с cursor.db
+
+    city = basket_db.execute("""SELECT city FROM users WHERE user_id = ?""", (user_id,)).fetchone()[0]
+    comment = ""
+    # Комментарии пользователей ===========================================================
+    try:
+        comment = basket_db.execute("""SELECT comment FROM users WHERE user_id = ?""", (user_id,)).fetchone()[0]
+        if comment is None:
+            comment = "без комментариев..."
+    except (TypeError, AttributeError):
+        pass
+    # ====================================================================================================
+    # выводим с БД basket users выбранный способ заявки
+    basket_db.execute("""SELECT delivery FROM users WHERE user_id = ?""", (user_id,))
+    try:
+        delivery = basket_db.fetchone()[0].upper()
+    except (TypeError, AttributeError):
+        delivery = "\U0000203CВыберите способ заявки!"
+
+    # ====================================================================================================
+    # инициализируем переменные
+    messages = []
+    profile = []
+    all_prices_basket = 0
+    admin_phone = ""
+    admin_bank = ""
+    # ===================================================================================================
+    # вывод из БД списка анализов по порядковому номеру
+    add_db.execute(f"SELECT * FROM user_{user_id}")
+    try:
+        result = add_db.fetchall()  # БД список анализов
+        # ================================================================================================
+        # ==========================ВЫВОД АНАЛИЗОВ=============================
+        # итерируем получаемый список заказов
+        for i, (id_num, name, price, tube, readiness) in enumerate(result, start=1):
+            # Добавляем номер перед каждым сообщением
+            message_str = f"{i}.<b>{name.split('(')[0]}</b> - {price} р., {readiness} дн."
+            messages.append(message_str)
+            all_prices_basket += price
+
+        # Присоединяем все сообщения в одну строку с помощью '\n'.json
+        all_messages = "\n".join(messages)
+        # ===============================================================================================
+
+        # ================================================================================================
+        # подключение к БД date_add_db для вывода в консоль выбранную ДАТУ
+        try:
+            date_person_db.execute(f"SELECT date_add FROM date WHERE user = ?", (user_id,))
+            date_end = date_person_db.fetchone()[0] + " (-/+ 20 мин.)"
+        except TypeError:
+            date_end = "выберите дату!"
+        # ================================================================================================
+        # условия: если сумма анализа превышает 2500 р, то выезд бесплатный, иначе выезд - 500 р.
+
+        job_db.execute("SELECT * FROM services")
+        sampling = 0
+        out_pay = 0
+        for i, (city_in_db, blood, out, address, phone, bank, all_sale) in enumerate(job_db.fetchall(), start=1):
+            if city == city_in_db:
+                sampling = blood
+                out_pay = out
+                admin_phone = phone
+                admin_bank = bank
+
+        if all_prices_basket >= 2500 or delivery == "самообращение".upper():
+            check_out_at = 0
+        else:
+            check_out_at = out_pay
+
+        # ==============================================================================================
+        # ===============================================================================================
+        # ==========================ВЫВОД ЗАКАЗЧИКА=============================
+        # вывод из БД basket_db для вывода в консоль
+        basket_db.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
+        column_name = basket_db.fetchall()
+        try:
+            if column_name[0][2] is not None:
+                for i, (user_id, fio, birth_date, phone, email, address, city, comm, exit_or_not, id_midwifery) \
+                        in enumerate(column_name, start=1):
+                    profile_info = f"{i}. {fio}\n{birth_date}\n{phone}\n{email}\n{address}"
+                    profile.append(profile_info)
+
+                all_profile = "\n".join(profile)
+            else:
+                all_profile = "\U0000203Cвыберите заказчика!"
+        except (TypeError, IndexError):
+            all_profile = "\U0000203Cвыберите заказчика!"
+
+        # для логики: если, пользователь выбирает самообращение то на консоль выходит адрес пункта
+        # ============================================================================================
+        your_self = ""
+        if delivery == "самообращение".upper():
+            job_db.execute("""SELECT * FROM services""")
+            for i, (city_go, sampling, exit_out, address, phone, bank, all_sale) in enumerate(job_db.fetchall(),
+                                                                                              start=1):
+                if city_go == city:
+                    your_self = "\n" + address
+                    break
+        # =============================================================================================
+        if city is None:
+            city = "\U0001F3D8"
+        await call.message.edit_text(text=all_messages + "\n<b>===========================</b>"
+                                                         f"\n<b>Сумма анализа:</b> {all_prices_basket} р."
+                                                         f"\n<b>Забор биоматериала:</b> {sampling} р."
+                                                         f"\n<b>Выезд:</b> {check_out_at} р."
+                                                         f"\n<b>Общая сумма:</b> "
+                                                         f"{all_prices_basket + check_out_at + sampling} р."
+                                                         f"\n<b>===========================</b>"
+                                                         f"\n<b>Кому:</b>"
+                                                         f"\n{all_profile}"
+                                                         "\n<b>===========================</b>"
+                                                         f"\n<b>{delivery}</b>"
+                                                         f"\n<b>Дата:</b> {date_end.split('>>')[0]}"
+                                                         f"\n<b>===========================</b>"
+                                                         f"\n<b>Город</b>: {city} {your_self}"
+                                                         f"\n<b>===========================</b>"
+                                                         f"\n<b>Комментарии:</b> {comment}"
+                                                         f"\n<b>===========================</b>"
+                                                         f"\n<b>Оплата: </b>переводом на"
+                                                         f"\n\U0000203C{admin_bank}\U0000203C<b>{admin_phone}</b>, "
+                                                         f"только после взятия биометариала",
+                                     reply_markup=await basket_menu())
+
+    except aiogram.exceptions.TelegramBadRequest:
+        await call.message.answer(text="Корзина пуста!")
+
+
 # ==========================================================================================================
 # 8.0  КОРЗИНА
 #   8.1. КОМУ ЗАКАЗАТЬ?
@@ -166,8 +299,10 @@ async def process_basket(message: Message):
 # ==========================================================================================================
 @router.callback_query(lambda c: c.data == "who_will_order")
 async def process_who_will_order(call: CallbackQuery):
+    user_id = call.message.chat.id
+
     await call.message.edit_text("Кому Вы будете оформлять заявку?",
-                                 reply_markup=await inline_choice())
+                                 reply_markup=await inline_choice(user_id))
 
 
 # ==========================================================================================================
@@ -176,21 +311,14 @@ async def process_who_will_order(call: CallbackQuery):
 #           8.1.1 = > КНОПКА "МНЕ"
 #           8.1.2 = > КНОПКА ДЕТЯМ
 # ==========================================================================================================
-@router.callback_query(lambda c: c.data == "childs_order_button")
-async def process_buy_for_child(call: CallbackQuery):
-    await call.message.edit_text(text="Выберите для какого ребенка: ",
-                                 reply_markup=await add_childs_in_basket())
-
 
 # ОБРАБОТКА КНОПКИ НАЗАД от ВЫБОРОВ ЛЮДЕЙ В КОРЗИНУ - ОСНОВНОЕ МЕНЮ =====================================
-@router.callback_query(lambda c: c.data in peoples_collection)
+@router.callback_query(lambda c: c.data.startswith("whoWillOrder_"))
 async def process_back_to_basket_at_who_will_order(call: CallbackQuery):
     user_id = call.message.chat.id
     global transfer_date
 
-    database_profile = {}  # словарь для получения информации с БД заявителя
     all_prices_back_to_basket = 0  # собирает сумму всех цен
-    all_profile = ""  # профиль заявителя
     messages = []  # коллекция дл получения информации о пользователя которая передается в string
     profile = []  # список для получения информации о заявителе в виде
     sampling = 0  # переменная для получения цены на забор биоматериалов
@@ -260,122 +388,25 @@ async def process_back_to_basket_at_who_will_order(call: CallbackQuery):
         # ============================================================================================
         # Выводим из БД пользователя все данные для вывода в консоль и введение в БД корзины
         # (basket.db таблица users)
-        if call.data == "my_order_button":
-            cursor_db.execute("""SELECT name, female, patronymic, birth_date, phone, email, address, city
-                 FROM users WHERE user_id = ?""", (user_id,))
-            db_profile = cursor_db.fetchall()
-            profile.clear()
+        user_unique_id = call.data.split("whoWillOrder_")[1]
+        cursor_db.execute(f"""SELECT fio, birth_date, phone, email, city, address
+             FROM users_{user_id} WHERE user_id = ?""", (user_unique_id,))
+        db_profile = cursor_db.fetchall()
+        profile.clear()
 
-            for i, (name, female, patronymic, birth_date, phone, email, address, city) in enumerate(db_profile,
-                                                                                                    start=1):
-                profile_info = f"{i}. {name} {female} {patronymic}\n{birth_date}\n{phone}\n{email}\n{address}"
-                profile.append(profile_info)
-                # добавляем в базу данных пользователей КОРЗИНЫ после добавления (КОМУ?)
-                # для ВЫВОДА в консоль КОРЗИНЫ
-                basket_db.execute(
-                    "UPDATE users SET name = ?, female = ?, patronymic = ?, birth_date = ?, phone = ?, "
-                    "email = ?, address = ?, city = ? WHERE user_id = ?",
-                    (name, female, patronymic, birth_date, phone, email, address, city, user_id))
-                conn_basket.commit()
-                break
-            all_profile = "\n".join(profile)
-
-        elif call.data == "back_to_basket_menu":
-            # ==========================ВЫВОД ЗАКАЗЧИКА=============================
-            # вывод из БД basket_db для вывода в консоль
-            basket_db.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
-            column_name = basket_db.fetchall()
-            try:
-                if column_name[0][2] is not None:
-                    for i, (user_id, name, female, patronymic,
-                            birth_date, phone, email, address, city, exit_or_not, comm, id_midwifery) \
-                            in enumerate(column_name, start=1):
-                        profile_info = (f"{name} {female} {patronymic}"
-                                        f"\n{birth_date}"
-                                        f"\n{phone}"
-                                        f"\n{email}")
-                        profile.append(profile_info)
-
-                    all_profile = "\n".join(profile)
-                else:
-                    all_profile = "\U0000203Cвыберите заказчика!"
-            except (TypeError, IndexError):
-                all_profile = "\U0000203Cвыберите заказчика!"
-        elif call.data in ["first_child_add_basket", "second_child_add_basket", "third_child_add_basket",
-                           "four_child_add_basket"]:
-            if call.data in "first_child_add_basket":
-                # Выводим из БД пользователя все данные для вывода в
-                # консоль и введение в БД корзины (basket.db таблица users)
-                cursor_db.execute("""SELECT user_id, child_name, child_female, child_patronymic, child_birth_date, 
-                phone, email, address, city FROM users WHERE user_id = ?""", (user_id,))
-                database_profile = cursor_db.fetchall()
-            elif call.data in "second_child_add_basket":
-                cursor_db.execute("""SELECT user_id, two_child_name, two_child_female, two_child_patronymic, 
-                two_child_birth_date, phone, email, address, city FROM users WHERE user_id = ?""", (user_id,))
-                database_profile = cursor_db.fetchall()
-            elif call.data in "third_child_add_basket":
-                cursor_db.execute("""SELECT user_id, three_child_name, three_child_female, three_child_patronymic, 
-                three_child_birth_date, phone, email, address, city FROM users WHERE user_id = ?""", (user_id,))
-                database_profile = cursor_db.fetchall()
-            elif call.data in "four_child_add_basket":
-                cursor_db.execute("""SELECT user_id, four_child_name, four_child_female, four_child_patronymic, 
-                    four_child_birth_date, phone, email, address, city FROM users WHERE user_id = ?""", (user_id,))
-                database_profile = cursor_db.fetchall()
-            profile.clear()
-            if database_profile[0][1] is not None:
-                try:
-                    for i, (user_id, name, female, patronymic, birth_date, phone, email, address, city) in (
-                            enumerate(database_profile, start=1)):
-                        profile_info = (f"{i}. {name} {female} {patronymic}"
-                                        f"\n{birth_date}"
-                                        f"\n{phone}"
-                                        f"\n{email}"
-                                        f"\n{address}")
-                        profile.append(profile_info)
-                        # добавляем в базу данных пользователей КОРЗИНЫ после добавления
-                        # (КОМУ?) для ВЫВОДА в консоль КОРЗИНЫ
-                        basket_db.execute("UPDATE users SET name = ?, female = ?, patronymic = ?, birth_date = ?, "
-                                          "phone = ?, email = ?, address = ?, city = ? WHERE user_id = ?",
-                                          (name, female, patronymic, birth_date, phone, email, address, city,
-                                           user_id))
-                        conn_basket.commit()
-
-                    all_profile = "\n".join(profile)
-                except aiogram.exceptions.TelegramNotFound:
-                    await call.message.answer(text="Корзина пуста!")
-            else:
-                await call.message.edit_text(text="Данных о наличии ребенка - нет!",
-                                             reply_markup=await childs_in_basket())
-        elif call.data == "others_order_button":
-            cursor_db.execute("""SELECT user_id, others_name_one, others_female_one, others_patronymic_one, 
-                            others_birth_date_one, others_phone_one, others_email_one, others_address_one, 
-                            others_city FROM users WHERE user_id = ?""", (user_id,))
-            database_profile = cursor_db.fetchall()
-
-            if database_profile[0][2] is not None:
-                try:
-                    for i, (user_id, name, female, patronymic, birth_date, phone, email, address, city_others) in (
-                            enumerate(database_profile, start=1)):
-                        profile_info = (f"{i}. {name} {female} {patronymic}"
-                                        f"\n{birth_date}"
-                                        f"\n{phone}"
-                                        f"\n{email}"
-                                        f"\n{address}")
-                        profile.append(profile_info)
-                        # добавляем в базу данных пользователей КОРЗИНЫ после добавления
-                        # (КОМУ?) для ВЫВОДА в консоль КОРЗИНЫ
-                        basket_db.execute(
-                            "UPDATE users SET name = ?, female = ?, patronymic = ?, birth_date = ?, phone = ?, "
-                            "email = ?, address = ?, city = ? WHERE user_id = ?",
-                            (name, female, patronymic, birth_date, phone, email, address, city_others, user_id))
-                        conn_basket.commit()
-
-                    all_profile = "\n".join(profile)
-                except aiogram.exceptions.TelegramNotFound:
-                    await call.message.answer(text="Корзина пуста!")
-            else:
-                await call.message.edit_text(text="Данные на другого человека не заполнены!",
-                                             reply_markup=await keyboard.inline_choice_back())
+        for i, (fio, birth_date, phone, email, city, address) in enumerate(db_profile,
+                                                                           start=1):
+            profile_info = f"{i}. {fio}\n{birth_date}\n{phone}\n{email}\n{address}"
+            profile.append(profile_info)
+            # добавляем в базу данных пользователей КОРЗИНЫ после добавления (КОМУ?)
+            # для ВЫВОДА в консоль КОРЗИНЫ
+            basket_db.execute(
+                "UPDATE users SET fio = ?, birth_date = ?, phone = ?, "
+                "email = ?, address = ?, city = ? WHERE user_id = ?",
+                (fio, birth_date, phone, email, address, city, user_id))
+            conn_basket.commit()
+            break
+        all_profile = "\n".join(profile)
 
         # для логики: если, пользователь выбирает самообращение то на консоль выходит адрес пункта
         your_self = ""
@@ -1009,12 +1040,11 @@ async def process_confirm_the_order(call: CallbackQuery):
         kb_conf.adjust(1)
         return kb_conf.as_markup()
 
-    await call.answer("\U0000203C \U0000FE0F После подтверждения заявки, невозможно его отредактировать!"
-                      "\n\U0000203C \U0000FE0FВсе данные с КОРЗИНЫ исчезнут!"
-                      "\n\U0000203C \U0000FE0FПроверьте личные данные, список "
-                      "анализов и общую сумму оплаты!", show_alert=True)
-    await call.message.edit_text(text="Если, данные верны, то можете подтвердить заявку.",
-                                 reply_markup=await kb_confirm())
+    await call.message.edit_text(
+        text="1. После подтверждения заявки, невозможно его отредактировать!"
+             "\n2. Все данные с КОРЗИНЫ исчезнут!"
+             "\n3. Проверьте личные данные, список "
+             "анализов и общую сумму оплаты!", reply_markup=await kb_confirm())
 
 
 # =================================================================================================================
@@ -1043,6 +1073,7 @@ async def process_confirm_basket(call: CallbackQuery):
         kb_confirm_back.button(text="назад ", callback_data="back_to_basket_menu")
         kb_confirm_back.adjust(1)
         return kb_confirm_back.as_markup()
+
     # ===================================================================================================
 
     # =========================РАБОТА С БАЗОЙ ДАННЫХ ВЫБРАННЫХ ЗНАЧЕНИЙ==================================
@@ -1096,11 +1127,11 @@ async def process_confirm_basket(call: CallbackQuery):
         result_date = (date_person_db.fetchone()[0]).split("_")[0]
 
         # _5 вытаскиваем с БД basket выбранного человека и добавляем в БД basket в таблицу user_{user_id}
-        for i, (user, name, female, patronymic, birth, phone, email, address, city_in_db_basket_users,
+        for i, (user, fio, birth, phone, email, address, city_in_db_basket_users,
                 deliver, comm, id_mid) in enumerate(result_name, start=1):
-            message_name = f"{female} {name} {patronymic}, {birth}г.\n{phone}\n{email}."
+            message_name = f"{fio}, {birth}г.\n{phone}\n{email}."
             user_address = address
-            fio_by_dir = f"{female} {name[0]}.{patronymic[0]}."
+            fio_by_dir = f"{fio}."
             delivery = deliver
             id_midwiferys = id_mid
             if comm is None:
@@ -1193,6 +1224,16 @@ async def process_confirm_basket(call: CallbackQuery):
                                                                               f"{result_date}_{id_midwiferys}"))
         midwifery_conn.commit()
 
+        count = 4
+        text = "  " * count
+        message_id = await call.message.edit_text("Формируется заявка" + text)
+        for i in range(count):
+            text = text.replace(" ", ".", 1)
+            await call.message.bot.edit_message_text(text="Формируется заявка" + text,
+                                                     chat_id=call.message.chat.id,
+                                                     message_id=message_id.message_id)
+            await asyncio.sleep(1)
+
         await call.answer("Заявка успешно оформлена! "
                           "\nВаши данные переданы в ЗАЯВКИ \U000027A1"
                           "\nСписок заявок закреплена значком \U0000274C, "
@@ -1200,5 +1241,5 @@ async def process_confirm_basket(call: CallbackQuery):
                           "\nзначок сменится на \u2705", show_alert=True)
         await call.message.answer(text="\U0001F389")
         await call.message.answer_photo(
-            photo="AgACAgIAAxkBAAJaUmXkgIypNZezMXiIP8b4-kcYPsQzAAIV3zEbKoshS6JQCPwGmMncAQADAgADeAADNAQ"
-        )
+            photo="https://cdn.pixabay.com/photo/2024/03/06/16/38/application-8616753_1280.jpg",
+            caption="Переходите в заявки")

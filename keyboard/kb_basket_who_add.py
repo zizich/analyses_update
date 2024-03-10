@@ -1,14 +1,21 @@
 from aiogram.types import InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+from data_base import cursor_db
 
-async def inline_choice():
+
+async def inline_choice(user_id):
+    cursor_db.execute(f"""SELECT user_id, fio FROM users_{user_id}""")
+    db_profile = cursor_db.fetchall()
+
     keyboard = InlineKeyboardBuilder()
-    keyboard.add(InlineKeyboardButton(text="Мне \U0001F64B", callback_data="my_order_button"))
-    keyboard.add(InlineKeyboardButton(text="Детям \U0000200D \U0001F467 \U0000200D \U0001F466",
-                                      callback_data="childs_order_button"))
-    keyboard.add(InlineKeyboardButton(text="Другим \U0001F465", callback_data="others_order_button"))
-    keyboard.add(InlineKeyboardButton(text="назад \U000023EA", callback_data="back_to_basket_menu"))
+
+    for i, (id_us, fio) in enumerate(db_profile, start=1):
+        if id_us == f"{user_id}-1":
+            keyboard.button(text=f"Мне", callback_data=f"whoWillOrder_{id_us}")
+        else:
+            keyboard.button(text=f"{fio}", callback_data=f"whoWillOrder_{id_us}")
+
     return keyboard.adjust(2).as_markup()
 
 

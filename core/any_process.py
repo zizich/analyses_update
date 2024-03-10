@@ -10,8 +10,6 @@ from data_base import all_analysis_db
 
 # TODO №1 переменная list для обработки меню (ИНФО, ДОБАВИТЬ, УДАЛИТЬ) каждого, выбранного анализа
 func_info_add_delete = ["add_analysis_in_basket", "delete_analysis_in_basket", "info_analysis_in_basket"]
-peoples_collection = ["back_to_basket_menu", "first_child_add_basket", "second_child_add_basket",
-                      "third_child_add_basket", "four_child_add_basket", "my_order_button", "others_order_button"]
 
 
 # TODO ================================================================================================================
