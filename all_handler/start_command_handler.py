@@ -7,8 +7,8 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, ChatMemberUpdated
 from aiogram.filters import CommandStart, Command, ChatMemberUpdatedFilter, IS_NOT_MEMBER, IS_MEMBER
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-
 from core.fsm_engine import States
+
 from data_base import cursor_db, conn, basket_db, connect_added, profit_db, connect_profit, \
     pattern_db
 from keyboard.replykeyboard import reply_keyboard_menu
