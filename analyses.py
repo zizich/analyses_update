@@ -12,8 +12,8 @@ from all_handler import start_command_handler, profile, other, search_analyses, 
     feedback, doctors
 from registration import first_registration, edit_user, edit_other
 
-# logging.basicConfig(level=logging.INFO)
-# logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 loop = asyncio.get_event_loop()
 locale.setlocale(locale.LC_ALL, 'ru_RU.UTF-8')
 # Создание объекта хранилища
