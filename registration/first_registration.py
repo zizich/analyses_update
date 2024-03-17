@@ -80,7 +80,7 @@ async def process_phone(message: Message, state: FSMContext):
                                   f"\n\u267B\uFE0F Дата рождения: {data['waiting_for_birth_day']}"
                                   f"\n\u267B\uFE0F Номер телефона: {data['waiting_for_phone']}"
                                   f"\n========================="
-                                  '\nВведите e-mail: (informatica@info.in)')
+                                  '\nВведите e-mail:')
     else:
         await message.reply("Ошибка! Пожалуйста, введите номер корректно."
                             "\nВведите номер телефона в формате 8911-222-33-44:")

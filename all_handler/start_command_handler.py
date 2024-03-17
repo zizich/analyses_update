@@ -75,7 +75,7 @@ async def process_start(message: Message, state: FSMContext):
                                           f"\n    \u267B \uFE0FНомер телефона: <b>{phone}</b>"
                                           f"\n<b>==============================</b>")
                 await state.set_state(States.waiting_for_email)
-                await message.answer(text='Введите e-mail: (informatica@anymail.ru)')
+                await message.answer(text='Введите e-mail:')
             elif address is None:
                 await message.answer(text="Для доступа к сервисам медицинских услуг, "
                                           "пожалуйста, пройдите регистрацию!"
@@ -207,7 +207,7 @@ async def process_start(message: Message, state: FSMContext):
                                           f"\n    \u267B \uFE0FНомер телефона: <b>{phone}</b>"
                                           f"\n<b>==============================</b>")
                 await state.set_state(States.waiting_for_email)
-                await message.answer(text='Введите e-mail: (informatica@anymail.ru)')
+                await message.answer(text='Введите e-mail:')
             elif address is None:
                 await message.answer(text="Для доступа к сервисам медицинских услуг, "
                                           "пожалуйста, пройдите регистрацию!"
