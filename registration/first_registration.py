@@ -53,7 +53,7 @@ async def process_set_name(message: Message, state: FSMContext):
     data = (await state.get_data())['waiting_for_fio']
     await message.answer(text=f"\u267B\uFE0F ФИО: {data}"
                               f"\n========================="
-                              '\nВведите дату рождения (ДД.ММ.ГГГГ):')
+                              '\nВведите дату рождения - ДД.ММ.ГГГГ:')
 
 
 # получение даты рождения, сохранения даты рождения, запрос номер телефона
@@ -65,7 +65,7 @@ async def process_birth_day(message: Message, state: FSMContext):
     await message.answer(text=f"\u267B\uFE0F ФИО: {data['waiting_for_fio']}"
                               f"\n\u267B\uFE0F Дата рождения: {data['waiting_for_birth_day']}"
                               f"\n========================="
-                              '\nВведите номер телефона: (8911-222-33-44)')
+                              '\nВведите номер телефона - 8911-222-33-44:')
 
 
 # получение номера телефона, сохранение номера, запрос email адреса
@@ -80,10 +80,10 @@ async def process_phone(message: Message, state: FSMContext):
                                   f"\n\u267B\uFE0F Дата рождения: {data['waiting_for_birth_day']}"
                                   f"\n\u267B\uFE0F Номер телефона: {data['waiting_for_phone']}"
                                   f"\n========================="
-                                  '\nВведите e-mail: (informatica@info.in)')
+                                  '\nВведите e-mail:')
     else:
         await message.reply("Ошибка! Пожалуйста, введите номер корректно."
-                            "\nВведите номер телефона в формате: (8911-222-33-44)")
+                            "\nВведите номер телефона в формате 8911-222-33-44:")
 
 
 # получение e-mail, сохранение e-mail, запрос адреса домашнего
@@ -147,5 +147,3 @@ async def process_address(message: Message, state: FSMContext):
                               "\n--------------------------",
                          reply_markup=reply_keyboard_menu)
     await state.clear()
-
-

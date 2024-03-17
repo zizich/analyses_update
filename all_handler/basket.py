@@ -1,4 +1,5 @@
 import asyncio
+import sqlite3
 
 import aiogram.exceptions
 from aiogram import Router, F
@@ -1152,94 +1153,102 @@ async def process_confirm_basket(call: CallbackQuery):
         await call.message.edit_text(text="\U0001F449 Выберите дату!", reply_markup=await kb_back_to_basket())
     else:
 
-        # ===================================================================================================
-        # ===================================================================================================
-        # переносим все выбранные анализы из profit.db в БД profit_income.db
-        string_collection = []
-        price_all_other_analyses = 0
-        profit_db.execute(f"""SELECT * FROM user_{user_id}""")
-        for i, (id_list, name_analysis, price, price_other, price_income) in enumerate(profit_db.fetchall(), start=1):
-            long_string = (f"*** {id_list}: {name_analysis} \n---- цена: {price} р. "
-                           f"стоимость: {price_other} р. кэш: {price_income}")
-            string_collection.append(long_string)
-            price_all_other_analyses += int(price_other)
-        string_long_info = "\n".join(string_collection)
-
-        # ====================================================================================
-        # инициализируем в БД админа данные о заказе, и прибыли
-        price_all_income = prices - price_all_other_analyses
-        profit_income_db.execute("""INSERT OR IGNORE INTO users (date, name, analyses, price, 
-                            price_other, price_income) VALUES(?, ?, ?, ?, ?, ?)""",
-                                 (result_date, fio_by_dir, string_long_info,
-                                  prices,
-                                  price_all_other_analyses, price_all_income))
-        connect_profit_income.commit()
-        # ====================================================================================
-        # удаляем БД таблицу пользователя profit.db
-        profit_db.execute(f"""DELETE FROM user_{user_id}""")
-        connect_profit.commit()
-        # ====================================================================================
         # добавляем в БД basket в таблицу user_{user_id}
 
         city = basket_db.execute("""SELECT city FROM users WHERE user_id = ?""",
                                  (user_id,)).fetchone()[0]
+        try:
+            # ===================================================================================================
+            # ===================================================================================================
+            # переносим все выбранные анализы из profit.db в БД profit_income.db
+            string_collection = []
+            price_all_other_analyses = 0
+            profit_db.execute(f"""SELECT * FROM user_{user_id}""")
+            for i, (id_list, name_analysis, price, price_other, price_income) in enumerate(profit_db.fetchall(),
+                                                                                           start=1):
+                long_string = (f"*** {id_list}: {name_analysis} \n---- цена: {price} р. "
+                               f"стоимость: {price_other} р. кэш: {price_income}")
+                string_collection.append(long_string)
+                price_all_other_analyses += int(price_other)
+            string_long_info = "\n".join(string_collection)
 
-        basket_db.execute(f"INSERT INTO user_{user_id} (id_date, name, analysis, address, "
-                          "price, city, delivery, comment, id_midwifery, confirm) "
-                          "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                          (result_date, message_name, analysis_all, user_address, prices, city,
-                           delivery, comment, id_midwiferys, "не подтверждена"))
-        conn_basket.commit()
-        # ====================================================================================
+            # ====================================================================================
+            # инициализируем в БД админа данные о заказе, и прибыли
+            price_all_income = prices - price_all_other_analyses
+            profit_income_db.execute("""INSERT OR IGNORE INTO users (date, name, analyses, price, 
+                                        price_other, price_income) VALUES(?, ?, ?, ?, ?, ?)""",
+                                     (result_date, fio_by_dir, string_long_info,
+                                      prices,
+                                      price_all_other_analyses, price_all_income))
+            connect_profit_income.commit()
+            # ====================================================================================
+            # удаляем БД таблицу пользователя profit.db
+            profit_db.execute(f"""DELETE FROM user_{user_id}""")
+            connect_profit.commit()
 
-        # ================================================================================================
-        # в БД фельдшера, где будет выводить готовую заявку
-        order_done_db.execute(f"INSERT INTO user_{id_midwiferys} (id_date, name, list_analysis, tube, "
-                              "city, delivery, address, comment, done, confirm, user, price, cost_price, income) "
-                              "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                              (result_date, message_name, analysis_by_order_done, tube, city, delivery,
-                               user_address, comment, "не выполнено", "не подтверждена", user_id, prices,
-                               price_all_other_analyses, price_all_income))
-        connect_order_done.commit()
+            # ====================================================================================
+            # ====================================================================================
 
-        # ===================================================================================================
-        # =======================           УДАЛЕНИЕ           ==============================================
-        # ===================================================================================================
+            basket_db.execute(f"INSERT INTO user_{user_id} (id_date, name, analysis, address, "
+                              "price, city, delivery, comment, id_midwifery, confirm) "
+                              "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                              (result_date, message_name, analysis_all, user_address, prices, city,
+                               delivery, comment, id_midwiferys, "не подтверждена"))
+            conn_basket.commit()
 
-        # удаляем выбранного пользователя с корзины
-        basket_db.execute(f"DELETE FROM users WHERE user_id = ?", (user_id,))
-        conn_basket.commit()
-        # ===================================================================================================
-        # удаляем список выбранных анализов с корзины
-        add_db.execute(f"DELETE FROM user_{user_id}")
-        connect_added.commit()
-        # ===================================================================================================
-        # ===================================================================================================
-        # удаляем ДАТУ с нашей БД (date_person.db)
-        date_person_db.execute("DELETE FROM date WHERE user = ?", (user_id,))
-        connect_person_date.commit()
+            # в БД фельдшера, где будет выводить готовую заявку
+            order_done_db.execute(f"INSERT INTO user_{id_midwiferys} (id_date, name, list_analysis, tube, "
+                                  "city, delivery, address, comment, done, confirm, user, price, cost_price, income) "
+                                  "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                                  (result_date, message_name, analysis_by_order_done, tube, city, delivery,
+                                   user_address, comment, "не выполнено", "не подтверждена", user_id, prices,
+                                   price_all_other_analyses, price_all_income))
+            connect_order_done.commit()
 
-        # добавляем в БД фельдшера выбранную дату со значком "галочка"
-        date_add_db.execute(f"""UPDATE nurse SET done = ? WHERE date = ?""", ("\U0001F4C6",
-                                                                              f"{result_date}_{id_midwiferys}"))
-        midwifery_conn.commit()
+            # ================================================================================================
 
-        count = 4
-        text = "  " * count
-        message_id = await call.message.edit_text("Формируется заявка" + text)
-        for i in range(count):
-            text = text.replace(" ", ".", 1)
-            await call.message.bot.edit_message_text(text="Формируется заявка" + text,
-                                                     chat_id=call.message.chat.id,
-                                                     message_id=message_id.message_id)
-            await asyncio.sleep(1)
+            # ===================================================================================================
+            # =======================           УДАЛЕНИЕ           ==============================================
+            # ===================================================================================================
 
-        await call.answer("Заявка успешно оформлена! "
-                          "\nВаши данные переданы в ЗАЯВКИ \U000027A1"
-                          "\nСписок заявок закреплена значком \U0000274C, "
-                          "\nПри подтверждении заявки медсестрой "
-                          "\nзначок сменится на \u2705", show_alert=True)
-        await call.message.answer(text="\U0001F389")
-        await call.message.answer_photo(
-            photo="https://cdn.pixabay.com/photo/2024/03/06/16/38/application-8616753_1280.jpg",
-            caption="Переходите в заявки")
+            # удаляем выбранного пользователя с корзины
+            basket_db.execute(f"DELETE FROM users WHERE user_id = ?", (user_id,))
+            conn_basket.commit()
+            # ===================================================================================================
+            # удаляем список выбранных анализов с корзины
+            add_db.execute(f"DELETE FROM user_{user_id}")
+            connect_added.commit()
+            # ===================================================================================================
+            # ===================================================================================================
+            # удаляем ДАТУ с нашей БД (date_person.db)
+            date_person_db.execute("DELETE FROM date WHERE user = ?", (user_id,))
+            connect_person_date.commit()
+
+            # добавляем в БД фельдшера выбранную дату со значком "галочка"
+            date_add_db.execute(f"""UPDATE nurse SET done = ? WHERE date = ?""", ("\U0001F4C6",
+                                                                                  f"{result_date}_{id_midwiferys}"))
+            midwifery_conn.commit()
+
+            count = 4
+            text = "  " * count
+            message_id = await call.message.edit_text("Формируется заявка" + text)
+            for i in range(count):
+                text = text.replace(" ", ".", 1)
+                await call.message.bot.edit_message_text(text="Формируется заявка" + text,
+                                                         chat_id=call.message.chat.id,
+                                                         message_id=message_id.message_id)
+                await asyncio.sleep(1)
+
+            await call.answer("Заявка успешно оформлена! "
+                              "\nВаши данные переданы в ЗАЯВКИ \U000027A1"
+                              "\nСписок заявок закреплена значком \U0000274C, "
+                              "\nПри подтверждении заявки медсестрой "
+                              "\nзначок сменится на \u2705", show_alert=True)
+            await call.message.answer(text="\U0001F389")
+            await call.message.answer_photo(
+                photo="https://cdn.pixabay.com/photo/2024/03/06/16/38/application-8616753_1280.jpg",
+                caption="Переходите в заявки")
+
+        except sqlite3.IntegrityError:
+            await call.message.edit_text(text="Дата уже занято, выберите другое время!",
+                                         reply_markup=await kb_back_to_basket())

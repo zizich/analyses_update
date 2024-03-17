@@ -27,13 +27,13 @@ async def process_take_tests(message: Message):
     keyboard.button(text="Поиск \U0001F50E", callback_data="search_analysis")
     keyboard.button(text="Стоп лист \u26D4\ufe0f", callback_data="stop_list")
     keyboard.adjust(1)
-    await message.answer(text="\U000027A1 Перед выбором, ознакомьтесь со стоп-листом \U0001F6AB: ",
+    await message.answer(text="\U000027A1 В режиме \U0001F50E Поиск введите название анализа по отдельности.. ",
                          reply_markup=keyboard.as_markup())
 
 
 @router.callback_query(F.data == "back_to_analyses")
 async def process_back_to_analyses(call: CallbackQuery):
-    await call.message.edit_text(text="\U000027A1 Перед выбором, ознакомьтесь со стоп-листом \U0001F6AB: ",
+    await call.message.edit_text(text="\U000027A1 В режиме \U0001F50E Поиск введите название анализа по отдельности..",
                                  reply_markup=await base_menu_analyses())
 
 
@@ -45,10 +45,14 @@ async def process_go_to_search_analysis(call: CallbackQuery, state: FSMContext):
     await state.set_state(States.waiting_for_search)
     await call.message.edit_text(text="\U000026A0 ВНИМАНИЕ \U0000203C"
                                       "\n=================="
-                                      "\n При поиске анализа: "
-                                      "\n\U00002757 Пишите полное/короткое наименование анализа"
-                                      "\n\U00002757 Пишите с Заглавными буквами либо АББРЕВИАТУРУ!"
-                                      "\n\U00002757 Пишите Английское наименование анализа!"
+                                      "\n Как правильно выполнить <b>поиск</b>: "
+                                      "\n1. Общий анализ крови"
+                                      "\n2. ОАК  либо оак"
+                                      "\n3. Корь, корь либо Measles Virus"
+                                      "\n=================="
+                                      '\n Нельзя: '
+                                      "\n1. <s>сдать анализ на ОАК</s>"
+                                      "\n2. <s>ОАК, ОАМ, ферритин, Витамин д</s>"
                                       "\n================== \nВведите наименование анализа: ")
 
 

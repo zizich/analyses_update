@@ -3,9 +3,7 @@ import logging
 import platform
 import locale
 
-
 from aiogram import Bot, Dispatcher
-
 
 from config import BOT_TOKEN
 from all_handler import start_command_handler, profile, other, search_analyses, basket, orders, archive, sale, \
