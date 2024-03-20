@@ -1,11 +1,11 @@
 import asyncio
 import logging
-import platform
+import os
 import locale
-
+import platform
 from aiogram import Bot, Dispatcher
+from dotenv import find_dotenv, load_dotenv
 
-from config import BOT_TOKEN
 from all_handler import start_command_handler, profile, other, search_analyses, basket, orders, archive, sale, \
     feedback, doctors
 from registration import first_registration, edit_user, edit_other
@@ -16,7 +16,15 @@ loop = asyncio.get_event_loop()
 locale.setlocale(locale.LC_ALL, 'ru_RU.UTF-8')
 # Создание объекта хранилища
 
-bot = Bot(token=BOT_TOKEN, parse_mode="HTML")
+load_dotenv(find_dotenv())
+
+system_info = platform.system()
+
+if system_info == "Windows":
+    bot = Bot(token=os.getenv("BOT_TOKEN_W"), parse_mode="HTML")
+else:
+    bot = Bot(token=os.getenv("BOT_TOKEN_L"), parse_mode="HTML")
+
 dp = Dispatcher()
 
 system_info = platform.system()

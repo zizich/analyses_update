@@ -1,8 +1,7 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 # соединяемся с БД списка общих анализов
-from data_base import all_analysis_db
-from data_base import complex_analyses_db
+from data_base import database_db
 
 
 # def all_clinic_analysis(group_name):
@@ -45,16 +44,16 @@ def search_analyses(name_search):
 
     # Выводим из БД список всех анализов и их параметров. Итерируем анализы по полученной группе (сортировка по
     # уникальному номеру каждого анализа, поиск осуществляется непосредственно по запросу SQL
-    dataBase = all_analysis_db.execute(f"SELECT * FROM clinic WHERE "
-                                       f"name_analysis LIKE '%{name_search}%' OR "
-                                       f"name_analysis LIKE '%{name_search.capitalize()}%' OR "
-                                       f"name_analysis LIKE '%{name_search.lower()}%' OR "
-                                       f"name_analysis LIKE '%{name_search.upper()}%'")
+    dataBase = database_db.execute(f"SELECT * FROM analyses WHERE "
+                                   f"name_analysis LIKE '%{name_search}%' OR "
+                                   f"name_analysis LIKE '%{name_search.capitalize()}%' OR "
+                                   f"name_analysis LIKE '%{name_search.lower()}%' OR "
+                                   f"name_analysis LIKE '%{name_search.upper()}%'")
 
-    for i, (sequence, id_list, name_analysis, price, info, tube, readiness, sale, sale_number, price_other, stopped) \
-            in enumerate(dataBase.fetchall(), start=1):
-        keyboard.button(text="{}\u20BD: {}".format(price, name_analysis.split('(')[0]),
-                        callback_data="id_{}".format(sequence))
+    for i, (sequence_number, code_number, analysis, synonyms, info, tube, readiness, sale, price, prime_cost,
+            stop, commplex) in enumerate(dataBase.fetchall(), start=1):
+        keyboard.button(text="{}\u20BD: {}".format(price, analysis.split('(')[0]),
+                        callback_data="id_{}".format(sequence_number))
         # создаем inline кнопки по полученным значениям из списка БД
     return keyboard
 
@@ -63,40 +62,29 @@ def search_analyses(name_search):
 def all_complex(complex_in):
     selected = []  # для выбранных анализов
     sum_price = 0  # комплексная сумма передающая пользователю в консоль
-    numbers_collection = []  # переменная для хранения порядкового номера анализа
 
     # ===========================================================================================================
-    result = all_analysis_db.execute("SELECT * FROM clinic").fetchall()
+    result = database_db.execute("SELECT * FROM analyses WHERE complex = ?", (complex_in,))
     # ===========================================================================================================
-    complex_analyses_db.execute("""SELECT * FROM complex""")
-    complex_analysis = complex_analyses_db.fetchall()
-    for y, (name_rus, name_eng, numbers) in enumerate(complex_analysis, start=1):
-        if complex_in == name_eng:
-            numbers_collection = [item.strip() for item in numbers.split(",")]
-            break
-    count_analysis = 1
-    for i, (sequence, id_list, name_analysis, price, info, tube, readiness, sale, sale_number,
-            price_other, *any_column) in enumerate(result, start=1):
-        if sequence in map(int, numbers_collection):
-            selected.append(f"\n{count_analysis}) {name_analysis} - {price} \U000020BD, срок: {readiness} дн.")
-            sum_price += price
-            count_analysis += 1
+    for i, (sequence_number, code_number, analysis, synonyms, info, tube, readiness, sale, price, prime_cost,
+            stop, commplex) in enumerate(result, start=1):
+        selected.append(f"\n{i}) {analysis} - {price} \U000020BD, срок: {readiness} дн.")
+        sum_price += price
 
     text = "".join(selected)
 
     return text + f"\n==================\n<b>Общая сумма:</b> {sum_price} \U000020BD "
 
-
 # функция реализующая получение выбранного комплекса, возврат всех входящих анализов
-def all_complex_selected(complex_in):
-    selected = []  # для выбранных анализов
-    # ===========================================================================================================
-    complex_analyses_db.execute("""SELECT * FROM complex""")
-    complex_analysis = complex_analyses_db.fetchall()
-
-    for y, (name_rus, name_eng, numbers) in enumerate(complex_analysis, start=1):
-        if complex_in == name_eng:
-            selected = [item.strip() for item in numbers.split(",")]
-            break
-
-    return selected
+# def all_complex_selected(complex_in):
+#     selected = []  # для выбранных анализов
+#     # ===========================================================================================================
+#     complex_analyses_db.execute("""SELECT * FROM complex""")
+#     complex_analysis = complex_analyses_db.fetchall()
+#
+#     for y, (name_rus, name_eng, numbers) in enumerate(complex_analysis, start=1):
+#         if complex_in == name_eng:
+#             selected = [item.strip() for item in numbers.split(",")]
+#             break
+#
+#     return selected

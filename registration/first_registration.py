@@ -7,7 +7,7 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from core.fsm_engine import States
-from data_base import cursor_db, conn, basket_db, job_db, conn_basket
+from data_base import database_db, connect_database
 from keyboard.replykeyboard import reply_keyboard_menu
 
 router = Router(name=__name__)
@@ -21,8 +21,8 @@ router = Router(name=__name__)
 async def process_add_city(call: CallbackQuery):
     keyboard = InlineKeyboardBuilder()
 
-    job_db.execute("""SELECT * FROM services""")
-    for i, (city, sampling, out_pay, address, phone, bank, all_sale) in enumerate(job_db.fetchall(), start=1):
+    database_db.execute("""SELECT * FROM cities_payment""")
+    for i, (city, *_) in enumerate(database_db.fetchall(), start=1):
         keyboard.button(text=f"{city} \u23E9", callback_data=f"cityAdd_{city}")
 
     keyboard.adjust(1)
@@ -35,11 +35,9 @@ async def process_add_n_sortym(call: CallbackQuery, state: FSMContext):
 
     city = call.data.split("cityAdd_")[1]
 
-    basket_db.execute("""UPDATE users SET city = ? WHERE user_id = ?""", (city, user_id))
-    conn_basket.commit()
+    database_db.execute("""UPDATE users SET city = ? WHERE user_id = ?""", (city, user_id))
+    connect_database.commit()
 
-    cursor_db.execute(f"""UPDATE users_{user_id} SET city = ? WHERE user_id = ?""", (city, f"{user_id}-1"))
-    conn.commit()
     await state.set_state(States.waiting_for_fio)
     await call.message.answer(text=f"Выбрали: \U0001F3E8{city}"
                                    '\nВведите ФИО:')
@@ -91,7 +89,7 @@ async def process_phone(message: Message, state: FSMContext):
 async def process_email(message: Message, state: FSMContext):
     user_id = message.chat.id
 
-    city = cursor_db.execute(f"""SELECT city FROM users_{user_id} WHERE user_id = ?""", (f"{user_id}-1",)).fetchone()[0]
+    city = database_db.execute(f"""SELECT city FROM users WHERE user_id = ?""", (user_id,)).fetchone()[0]
     await state.update_data(waiting_for_email=message.text)
     await state.set_state(States.waiting_for_address)
     data = await state.get_data()
@@ -118,10 +116,10 @@ async def process_address(message: Message, state: FSMContext):
     address = data['waiting_for_address']
 
     # Обновляем базу данных
-    cursor_db.execute(
-        f"""UPDATE users_{user_id} SET fio = ?, birth_date = ?, phone = ?, email = ?, address = ? 
+    database_db.execute(
+        f"""UPDATE users SET fio = ?, birth_date = ?, phone = ?, email = ?, address = ? 
             WHERE user_id = ?""", (fio, birth_date, phone, email, address, f"{user_id}-1"))
-    conn.commit()
+    connect_database.commit()
 
     await state.update_data(waiting_for_address=message.text)
     await message.answer(text="\U0001F52C")

@@ -8,8 +8,7 @@ from aiogram.filters import CommandStart
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from core.fsm_engine import States
 
-from data_base import cursor_db, conn, basket_db, connect_added, profit_db, connect_profit, \
-    pattern_db
+from data_base import database_db, connect_database
 from keyboard.replykeyboard import reply_keyboard_menu
 
 router = Router(name=__name__)
@@ -20,9 +19,9 @@ async def process_start(message: Message, state: FSMContext):
     user_id = message.from_user.id
 
     try:
-        cursor_db.execute("SELECT fio, birth_date, phone, email, city, address"
-                          f" FROM users_{user_id} WHERE user_id = ?", (f"{user_id}-1",))
-        user = cursor_db.fetchall()
+        database_db.execute("SELECT fio, birth_date, phone, email, city, address"
+                            f" FROM users WHERE user_id = ?", (user_id,))
+        user = database_db.fetchall()
         for i, (fio, birth_date, phone, email, city, address) in enumerate(user, start=1):
             if city is None:
                 keyboard = InlineKeyboardBuilder()
@@ -97,63 +96,14 @@ async def process_start(message: Message, state: FSMContext):
     except (sqlite3.OperationalError, TypeError):
         # логика: в БД added_analysis.db будем создавать каждый раз таблицу индивидуальную для каждого пользователя
         # и будем добавлять туда выбранный анализ
-        connect_added.execute(f"CREATE TABLE IF NOT EXISTS user_{user_id}"
-                              "(id INTEGER PRIMARY KEY, name TEXT, price INTEGER, tube TEXT, readiness INTEGER)")
-        connect_added.commit()
 
-        # создаем таблицу для передачи дохода администратору
-        profit_db.execute(f"""CREATE TABLE IF NOT EXISTS user_{user_id}
-                              (id_list INTEGER,
-                              name_analysis TEXT,
-                              price TEXT,
-                              price_other TEXT,
-                              price_income TEXT
-                            )""")
-        connect_profit.commit()
-
-        basket_db.execute(f"""
-            CREATE TABLE IF NOT EXISTS user_{user_id}(
-                id_date TEXT,
-                name TEXT,
-                analysis TEXT,
-                price INTEGER,
-                address TEXT,
-                city TEXT,
-                delivery TEXT,
-                comment TEXT,
-                id_midwifery TEXT,
-                confirm TEXT
-            )
-            """)
-
-        pattern_db.execute(f"""
-            CREATE TABLE IF NOT EXISTS user_{user_id}(
-                date TEXT,
-                name_pattern TEXT,
-                analysis_numbers TEXT
-                )
-            """)
-
-        cursor_db.execute(f"""CREATE TABLE IF NOT EXISTS users_{user_id}(
-            user_id TEXT PRIMARY KEY,
-            fio TEXT,
-            birth_date TEXT,
-            phone INTEGER,
-            email TEXT,
-            city TEXT,
-            address TEXT,
-            subscribe TEXT, 
-            photo BLOB
-        )""")
-
-        cursor_db.execute(f"""INSERT OR IGNORE INTO users_{user_id} (user_id) VALUES (?)""",
-                          (f"{user_id}-1",))
-        conn.commit()
+        database_db.execute(f"""INSERT OR IGNORE INTO users (user_id) VALUES (?)""", (user_id,))
+        connect_database.commit()
 
         # try:
-        cursor_db.execute("SELECT fio, birth_date, phone, email, address, city"
-                          f" FROM users_{user_id} WHERE user_id = ?", (f"{user_id}-1",))
-        user = cursor_db.fetchall()
+        database_db.execute("SELECT fio, birth_date, phone, email, address, city"
+                            f" FROM users WHERE user_id = ?", (user_id,))
+        user = connect_database.fetchall()
 
         for i, (fio, birth_date, phone, email, address, city) in enumerate(user, start=1):
             if city is None:
@@ -222,7 +172,6 @@ async def process_start(message: Message, state: FSMContext):
                 await state.set_state(States.waiting_for_address)
                 await message.answer(text=f'Город: {city} \nВведите адрес в формате '
                                           f'(ул. Ленина, д.56-327)')
-
 
 # @router.chat_member(ChatMemberUpdatedFilter(IS_MEMBER >> IS_NOT_MEMBER))
 # async def on_user_leave(event: ChatMemberUpdated):
