@@ -9,9 +9,7 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from core.fsm_engine import States
-from data_base import basket_db, conn_basket, add_db, date_person_db, job_db, cursor_db, date_add_db, midwifery_conn, \
-    connect_person_date, pattern_db, all_analysis_db, connect_added, profit_db, connect_profit, connect_pattern, \
-    profit_income_db, connect_profit_income, order_done_db, connect_order_done
+from data_base import database_db, connect_database
 from keyboard import delivery_in_basket, gth_after_add_date, kb_patterns
 from keyboard.kb_basket_who_add import inline_choice
 from keyboard.kb_basket_menu import basket_menu, basket_menu_first
@@ -25,27 +23,27 @@ pattern_global = ""  # для получения наименование шаб
 @router.message(F.text.in_("\U0001F6D2 Корзина"))
 async def process_basket(message: Message):
     user_id = message.chat.id
-    basket_db.execute("""INSERT OR IGNORE INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                      (user_id, None, None, None, None, None, None, None, None, None))
-    conn_basket.commit()
+    database_db.execute("""INSERT OR IGNORE INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                        (user_id, None, None, None, None, None, None, None, None, None, None))
+    connect_database.commit()
     #  После подтверждения заявки с БД basket.db удаляется вся инфо пользователя, соответственно при вызове сity
     #  выдает исключение, о том, что ячейка пустая. Решение: система try/except. Если, в basket.db нет инфы, мы
     #  будем брать его с cursor.db
 
-    city = basket_db.execute("""SELECT city FROM users WHERE user_id = ?""", (user_id,)).fetchone()[0]
+    city_in = database_db.execute("""SELECT city FROM users WHERE user_id = ?""", (user_id,)).fetchone()[0]
     comment = ""
     # Комментарии пользователей ===========================================================
     try:
-        comment = basket_db.execute("""SELECT comment FROM users WHERE user_id = ?""", (user_id,)).fetchone()[0]
+        comment = database_db.execute("""SELECT comment FROM users WHERE user_id = ?""", (user_id,)).fetchone()[0]
         if comment is None:
             comment = "без комментариев..."
     except (TypeError, AttributeError):
         pass
     # ====================================================================================================
     # выводим с БД basket users выбранный способ заявки
-    basket_db.execute("""SELECT delivery FROM users WHERE user_id = ?""", (user_id,))
+    database_db.execute("""SELECT delivery FROM users WHERE user_id = ?""", (user_id,))
     try:
-        delivery = basket_db.fetchone()[0].upper()
+        delivery = database_db.fetchone()[0].upper()
     except (TypeError, AttributeError):
         delivery = "\U0000203CВыберите способ заявки!"
 
@@ -56,15 +54,16 @@ async def process_basket(message: Message):
     all_prices_basket = 0
     admin_phone = ""
     admin_bank = ""
+    city = ""
     # ===================================================================================================
     # вывод из БД списка анализов по порядковому номеру
-    add_db.execute(f"SELECT * FROM user_{user_id}")
+    database_db.execute(f"SELECT * FROM users_analyses_selected WHERE user_id = ?", (user_id,))
     try:
-        result = add_db.fetchall()  # БД список анализов
+        result = database_db.fetchall()  # БД список анализов
         # ================================================================================================
         # ==========================ВЫВОД АНАЛИЗОВ=============================
         # итерируем получаемый список заказов
-        for i, (id_num, name, price, tube, readiness) in enumerate(result, start=1):
+        for i, (code_analyses, name, tube, readiness, price, prime_cost, income, id_user) in enumerate(result, start=1):
             # Добавляем номер перед каждым сообщением
             message_str = f"{i}.<b>{name.split('(')[0]}</b> - {price} р., {readiness} дн."
             messages.append(message_str)
@@ -77,20 +76,21 @@ async def process_basket(message: Message):
         # ================================================================================================
         # подключение к БД date_add_db для вывода в консоль выбранную ДАТУ
         try:
-            date_person_db.execute(f"SELECT date_add FROM date WHERE user = ?", (user_id,))
-            date_end = date_person_db.fetchone()[0] + " (-/+ 20 мин.)"
+            database_db.execute(f"SELECT nurse_date_selected FROM date WHERE users_id = ?", (user_id,))
+            date_end = database_db.fetchone()[0] + " (-/+ 20 мин.)"
         except TypeError:
             date_end = "выберите дату!"
         # ================================================================================================
         # условия: если сумма анализа превышает 2500 р, то выезд бесплатный, иначе выезд - 500 р.
 
-        job_db.execute("SELECT * FROM services")
+        database_db.execute("SELECT * FROM cities_payment")
         sampling = 0
         out_pay = 0
-        for i, (city_in_db, blood, out, address, phone, bank, all_sale) in enumerate(job_db.fetchall(), start=1):
-            if city == city_in_db:
-                sampling = blood
-                out_pay = out
+        for i, (city_pay, sampling_in, exit_in, address, phone, bank, all_sale, nurse_delivery,
+                nurse_income_day) in enumerate(database_db.fetchall(), start=1):
+            if city_pay == city_in:
+                sampling = sampling_in
+                out_pay = exit_in
                 admin_phone = phone
                 admin_bank = bank
 
@@ -102,12 +102,12 @@ async def process_basket(message: Message):
         # ==============================================================================================
         # ===============================================================================================
         # ==========================ВЫВОД ЗАКАЗЧИКА=============================
-        # вывод из БД basket_db для вывода в консоль
-        basket_db.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
-        column_name = basket_db.fetchall()
+        # вывод из БД users_selected для вывода в консоль
+        database_db.execute("SELECT * FROM users_selected WHERE user_id = ?", (user_id,))
+        column_name = database_db.fetchall()
         try:
             if column_name[0][2] is not None:
-                for i, (user_id, fio, birth_date, phone, email, address, city, comm, exit_or_not, id_midwifery) \
+                for i, (user_id, fio, birth_date, phone, email, address, city_user, delivery, comment, nurse_id) \
                         in enumerate(column_name, start=1):
                     profile_info = f"{i}. {fio}\n{birth_date}\n{phone}\n{email}\n{address}"
                     profile.append(profile_info)
@@ -122,14 +122,14 @@ async def process_basket(message: Message):
         # ============================================================================================
         your_self = ""
         if delivery == "самообращение".upper():
-            job_db.execute("""SELECT * FROM services""")
-            for i, (city_go, sampling, exit_out, address, phone, bank, all_sale) in enumerate(job_db.fetchall(),
-                                                                                              start=1):
-                if city_go == city:
+            database_db.execute("""SELECT * FROM cities_payment""")
+            for i, (city_db, sampling, exit_in, address, phone, bank, all_sale, nurse_delivery,
+                    nurse_income_day) in enumerate(database_db.fetchall(), start=1):
+                if city_in == city_db:
                     your_self = "\n" + address
                     break
         # =============================================================================================
-        if city is None:
+        if city_in is None:
             city = "\U0001F3D8"
         await message.answer(text=all_messages + "\n<b>===========================</b>"
                                                  f"\n<b>Сумма анализа:</b> {all_prices_basket} р."
@@ -160,27 +160,27 @@ async def process_basket(message: Message):
 @router.callback_query(F.data == "back_to_basket_menu")
 async def process_back_to_basket(call: CallbackQuery):
     user_id = call.message.chat.id
-    basket_db.execute("""INSERT OR IGNORE INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                      (user_id, None, None, None, None, None, None, None, None, None))
-    conn_basket.commit()
+    database_db.execute("""INSERT OR IGNORE INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                        (user_id, None, None, None, None, None, None, None, None, None, None))
+    connect_database.commit()
     #  После подтверждения заявки с БД basket.db удаляется вся инфо пользователя, соответственно при вызове сity
     #  выдает исключение, о том, что ячейка пустая. Решение: система try/except. Если, в basket.db нет инфы, мы
     #  будем брать его с cursor.db
 
-    city = basket_db.execute("""SELECT city FROM users WHERE user_id = ?""", (user_id,)).fetchone()[0]
+    city_in = database_db.execute("""SELECT city FROM users WHERE user_id = ?""", (user_id,)).fetchone()[0]
     comment = ""
     # Комментарии пользователей ===========================================================
     try:
-        comment = basket_db.execute("""SELECT comment FROM users WHERE user_id = ?""", (user_id,)).fetchone()[0]
+        comment = database_db.execute("""SELECT comment FROM users WHERE user_id = ?""", (user_id,)).fetchone()[0]
         if comment is None:
             comment = "без комментариев..."
     except (TypeError, AttributeError):
         pass
     # ====================================================================================================
     # выводим с БД basket users выбранный способ заявки
-    basket_db.execute("""SELECT delivery FROM users WHERE user_id = ?""", (user_id,))
+    database_db.execute("""SELECT delivery FROM users WHERE user_id = ?""", (user_id,))
     try:
-        delivery = basket_db.fetchone()[0].upper()
+        delivery = database_db.fetchone()[0].upper()
     except (TypeError, AttributeError):
         delivery = "\U0000203CВыберите способ заявки!"
 
@@ -193,13 +193,13 @@ async def process_back_to_basket(call: CallbackQuery):
     admin_bank = ""
     # ===================================================================================================
     # вывод из БД списка анализов по порядковому номеру
-    add_db.execute(f"SELECT * FROM user_{user_id}")
+    database_db.execute(f"SELECT * FROM users_analyses_selected WHERE user_id = ?", (user_id,))
     try:
-        result = add_db.fetchall()  # БД список анализов
+        result = database_db.fetchall()  # БД список анализов
         # ================================================================================================
         # ==========================ВЫВОД АНАЛИЗОВ=============================
         # итерируем получаемый список заказов
-        for i, (id_num, name, price, tube, readiness) in enumerate(result, start=1):
+        for i, (code_analyses, name, tube, readiness, price, prime_cost, income, id_user) in enumerate(result, start=1):
             # Добавляем номер перед каждым сообщением
             message_str = f"{i}.<b>{name.split('(')[0]}</b> - {price} р., {readiness} дн."
             messages.append(message_str)
@@ -212,18 +212,18 @@ async def process_back_to_basket(call: CallbackQuery):
         # ================================================================================================
         # подключение к БД date_add_db для вывода в консоль выбранную ДАТУ
         try:
-            date_person_db.execute(f"SELECT date_add FROM date WHERE user = ?", (user_id,))
-            date_end = date_person_db.fetchone()[0] + " (-/+ 20 мин.)"
+            database_db.execute(f"SELECT nurse_date_selected FROM date WHERE users_id = ?", (user_id,))
+            date_end = database_db.fetchone()[0] + " (-/+ 20 мин.)"
         except TypeError:
             date_end = "выберите дату!"
         # ================================================================================================
         # условия: если сумма анализа превышает 2500 р, то выезд бесплатный, иначе выезд - 500 р.
 
-        job_db.execute("SELECT * FROM services")
+        database_db.execute("SELECT * FROM cities_payment")
         sampling = 0
         out_pay = 0
-        for i, (city_in_db, blood, out, address, phone, bank, all_sale) in enumerate(job_db.fetchall(), start=1):
-            if city == city_in_db:
+        for i, (city_in_db, blood, out, address, phone, bank, all_sale) in enumerate(database_db.fetchall(), start=1):
+            if city_in == city_in_db:
                 sampling = blood
                 out_pay = out
                 admin_phone = phone
@@ -237,12 +237,12 @@ async def process_back_to_basket(call: CallbackQuery):
         # ==============================================================================================
         # ===============================================================================================
         # ==========================ВЫВОД ЗАКАЗЧИКА=============================
-        # вывод из БД basket_db для вывода в консоль
-        basket_db.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
-        column_name = basket_db.fetchall()
+        # вывод из БД users_selected для вывода в консоль
+        database_db.execute("SELECT * FROM users_selected WHERE user_id = ?", (user_id,))
+        column_name = database_db.fetchall()
         try:
             if column_name[0][2] is not None:
-                for i, (user_id, fio, birth_date, phone, email, address, city, comm, exit_or_not, id_midwifery) \
+                for i, (user_id, fio, birth_date, phone, email, address, city_user, delivery, comment, nurse_id) \
                         in enumerate(column_name, start=1):
                     profile_info = f"{i}. {fio}\n{birth_date}\n{phone}\n{email}\n{address}"
                     profile.append(profile_info)
@@ -257,14 +257,14 @@ async def process_back_to_basket(call: CallbackQuery):
         # ============================================================================================
         your_self = ""
         if delivery == "самообращение".upper():
-            job_db.execute("""SELECT * FROM services""")
-            for i, (city_go, sampling, exit_out, address, phone, bank, all_sale) in enumerate(job_db.fetchall(),
-                                                                                              start=1):
-                if city_go == city:
+            database_db.execute("""SELECT * FROM cities_payment""")
+            for i, (city_db, sampling, exit_in, address, phone, bank, all_sale, nurse_delivery,
+                    nurse_income_day) in enumerate(database_db.fetchall(), start=1):
+                if city_db == city_in:
                     your_self = "\n" + address
                     break
         # =============================================================================================
-        if city is None:
+        if city_in is None:
             city = "\U0001F3D8"
         await call.message.edit_text(text=all_messages + "\n<b>===========================</b>"
                                                          f"\n<b>Сумма анализа:</b> {all_prices_basket} р."
@@ -329,10 +329,10 @@ async def process_back_to_basket_at_who_will_order(call: CallbackQuery):
     city = "\U0001F3D8"
     comment = ""
     try:
-        city = basket_db.execute("""SELECT city FROM users WHERE user_id = ?""", (user_id,)).fetchone()[0]
+        city = database_db.execute("""SELECT city FROM users WHERE user_id = ?""", (user_id,)).fetchone()[0]
         # условия: если сумма анализа превышает 2500 р, то выезд бесплатный, иначе выезд - 500 р.
-        job_db.execute("SELECT * FROM services WHERE city = ?", (city,))
-        for i, (city_in_db, blood, out, address, phone, bank, all_sale) in enumerate(job_db.fetchall(), start=1):
+        database_db.execute("SELECT * FROM cities_payment WHERE city = ?", (city,))
+        for i, (city_in_db, blood, out, address, phone, bank, all_sale) in enumerate(database_db.fetchall(), start=1):
             sampling = blood
             out_pay = out
             admin_phone = phone
@@ -341,16 +341,16 @@ async def process_back_to_basket_at_who_will_order(call: CallbackQuery):
         print(error)
     # Комментарии пользователей ===========================================================
     try:
-        comment = basket_db.execute("""SELECT comment FROM users WHERE user_id = ?""", (user_id,)).fetchone()[0]
+        comment = database_db.execute("""SELECT comment FROM users_orders WHERE user_id = ?""", (user_id,)).fetchone()[0]
         if comment is None:
             comment = "без комментариев..."
     except (TypeError, AttributeError):
         pass
     # ==================================================================================================
     # выводим с БД basket users выбранный способ заявки
-    basket_db.execute("""SELECT delivery FROM users WHERE user_id = ?""", (user_id,))
+    database_db.execute("""SELECT delivery FROM users_orders WHERE user_id = ?""", (user_id,))
     try:
-        delivery = basket_db.fetchone()[0].upper()
+        delivery = database_db.fetchone()[0].upper()
     except (TypeError, AttributeError):
         delivery = "\U0000203CВыберите способ заявки!"
 

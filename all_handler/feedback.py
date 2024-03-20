@@ -5,7 +5,7 @@ import sqlite3 as sq
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery, FSInputFile
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from data_base import archive_db, connect_archive
+from data_base import database_db, connect_database
 
 system_info = platform.system()
 
@@ -57,10 +57,10 @@ async def process_not_result(call: CallbackQuery):
 
     keyboard = InlineKeyboardBuilder()
     try:
-        archive_db.execute(f"""SELECT * FROM user_{user_id}""")
+        database_db.execute(f"""SELECT * FROM users_archive WHERE users_id = ?""", (user_id, ))
 
         for i, (date, name, analysis, price, address, city, delivery, comm, confirm, id_midwifery) in (
-                enumerate(archive_db.fetchall(), start=1)):
+                enumerate(database_db.fetchall(), start=1)):
             keyboard.button(text=f"{date.split('>>')[0]}", callback_data=f"notResult_{date}")
 
         keyboard.button(text="назад \U000023EE", callback_data="back_to_help")
@@ -87,17 +87,17 @@ async def process_not_result_info(call: CallbackQuery):
     user_id = call.message.chat.id
     date = call.data.strip("notResult_")
 
-    archive_db.execute(f"""SELECT * FROM user_{user_id}""")
+    database_db.execute(f"""SELECT * FROM users_archive""")
 
     message_archive = ""
-    for i, (date_arch, name, analysis, price, address, city, delivery, comm, confirm,
-            id_midwifery) in (enumerate(archive_db.fetchall(), start=1)):
-        if date == date_arch:
+    for i, (date_db, users_id, nurse_id, name, analysis, price, address, city, delivery, comment,
+            confirm) in (enumerate(database_db.fetchall(), start=1)):
+        if date == date_db:
             if confirm != "результаты отправлены \U0000203C":
                 confirm_text = "\U0000203C Нету результата \U0000203C"
             else:
                 confirm_text = confirm
-            message_archive = (f"\U0001F4C6Дата: {date_arch}:"
+            message_archive = (f"\U0001F4C6Дата: {date_db}:"
                                f"\n \U0000267BЛичные данные: {name}"
                                f"\n \U0000267BАнализы: \n{analysis}"
                                f"\n \U0000267BГород: {city}"
@@ -118,8 +118,8 @@ async def process_not_result_info(call: CallbackQuery):
     user_id = call.message.chat.id
     date = (call.data.strip("sendRequest_")).split(">>")[0]
 
-    archive_db.execute(f"""UPDATE user_{user_id} SET confirm = ? WHERE id_date = ?""", ("нету результата", date))
-    connect_archive.commit()
+    database_db.execute(f"""UPDATE users_archive SET confirm = ? WHERE date = ?""", ("нету результата", date))
+    connect_database.commit()
 
     keyboard = InlineKeyboardBuilder()
     keyboard.button(text="назад \U000023EE", callback_data=f"notResult_{date}")
