@@ -22,7 +22,10 @@ async def process_add_others_people(message: Message):
     try:
         unique_code = f"{uuid.uuid4()}"[:10]
         for i, (id_us, fio) in enumerate(db_profile, start=1):
-            keyboard.button(text=f"{fio}", callback_data=f"others_{id_us}")
+            if id_us in str(user_id):
+                pass
+            else:
+                keyboard.button(text=f"{fio}", callback_data=f"others_{id_us}")
 
         keyboard.button(text="добавить \U00002795", callback_data=f"people_{unique_code}")
         keyboard.adjust(1)
@@ -47,7 +50,10 @@ async def process_other_profile_back(call: CallbackQuery):
         async def kb_others_list():
             unique_code = f"{uuid.uuid4()}"[:10]
             for i, (id_us, fio) in enumerate(db_profile, start=1):
-                keyboard.button(text=f"{fio}", callback_data=f"others_{id_us}")
+                if id_us in str(user_id):
+                    pass
+                else:
+                    keyboard.button(text=f"{fio}", callback_data=f"others_{id_us}")
 
             keyboard.button(text="добавить \U00002795", callback_data=f"people_{unique_code}")
             keyboard.adjust(1)
@@ -65,7 +71,6 @@ async def process_other_profile_back(call: CallbackQuery):
 
 @router.callback_query(F.data.startswith("others_"))
 async def process_show_other(call: CallbackQuery):
-    user_id = call.message.chat.id
     unique_user = call.data.split("others_")[1]
 
     async def kb_other_user_info():

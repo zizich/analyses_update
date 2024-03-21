@@ -18,8 +18,8 @@ search_word = ""  # переменная для назначения анали�
 @router.message(F.text.in_(['\U0001F489 Анализы']))
 async def process_take_tests(message: Message):
     user_id = message.chat.id
-    database_db.execute("""INSERT OR IGNORE INTO users_selected VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                        (user_id, None, None, None, None, None, None, None, None, None))
+    database_db.execute("""INSERT OR IGNORE INTO users_selected VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                        (user_id, None, None, None, None, None, None))
     connect_database.commit()
     keyboard = InlineKeyboardBuilder()
     keyboard.button(text="Комплексы \U0001F9EA", callback_data="group_buttons")

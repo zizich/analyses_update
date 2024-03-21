@@ -16,7 +16,19 @@ router = Router(name=__name__)
 # =============================ОБРАБОТКА КНОПКИ "РЕДАКТИРОВАТЬ ПРОФИЛЬ"=====================================
 @router.callback_query(F.data == "edit_profile")
 async def process_edit_profile(call: CallbackQuery):
-    await call.message.edit_text(text="Редактировать данные: ", reply_markup=await edit_user())
+    user_id = call.message.from_user.id
+
+    database_db.execute("""SELECT fio, birth_date, phone, email, city, address FROM users WHERE user_id = ?""",
+                        (user_id,))
+
+    for i, (fio, birth_date, phone, email, city, address) in enumerate(database_db.fetchall(), start=1):
+        await call.message.edit_text(text=f"<b>\U0001F3E0 Профиль:</b>"
+                                          f"\n    ♻️ Ваш id:   <b>{user_id}</b>"
+                                          f"\n    ♻️ ФИО:   <b>{fio}</b>"
+                                          f"\n    ♻️ Номер телефона: <b>{phone}</b>"
+                                          f"\n    ♻️ e-mail: <b>{email}</b>"
+                                          f"\n    ♻️ Город: <b>{city}</b> \U0001F3E0"
+                                          f"\n    ♻️ Адресс: <b>{address}</b>", reply_markup=await edit_user())
 
 
 # ==================================ОБРАБОТКА КНОПКИ "РЕДАКТИРОВАТЬ ИМЯ"=====================================
@@ -116,9 +128,14 @@ async def process_edit_city_user(call: CallbackQuery):
 @router.callback_query(F.data.startswith("cityEdit_"))
 async def process_add_city(call: CallbackQuery):
     user_id = call.message.chat.id
+
+    database_db.execute("""INSERT OR IGNORE INTO users_orders VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                        (None, user_id, None, None, None, None, None, None, None, None, user_id))
+    connect_database.commit()
+
     city = call.data.split("cityEdit_")[1]
 
-    database_db.execute("""UPDATE users_orders SET city = ? WHERE user_id = ?""", (city, user_id))
+    database_db.execute("""UPDATE users_orders SET city = ? WHERE users_id = ?""", (city, user_id))
     connect_database.commit()
 
     database_db.execute(f"""UPDATE users SET city = ? WHERE user_id = ?""", (city, user_id))

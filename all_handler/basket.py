@@ -24,8 +24,8 @@ pattern_global = ""  # для получения наименование шаб
 @router.message(F.text.in_("\U0001F6D2 Корзина"))
 async def process_basket(message: Message):
     user_id = message.chat.id
-    database_db.execute("""INSERT OR IGNORE INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                        (user_id, None, None, None, None, None, None, None, None, None, None))
+    database_db.execute("""INSERT OR IGNORE INTO users_orders VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                        (None, user_id, None, None, None, None, None, None, None, None, user_id))
     connect_database.commit()
     #  После подтверждения заявки с БД basket.db удаляется вся инфо пользователя, соответственно при вызове сity
     #  выдает исключение, о том, что ячейка пустая. Решение: система try/except. Если, в basket.db нет инфы, мы
@@ -161,25 +161,26 @@ async def process_basket(message: Message):
 @router.callback_query(F.data == "back_to_basket_menu")
 async def process_back_to_basket(call: CallbackQuery):
     user_id = call.message.chat.id
-    database_db.execute("""INSERT OR IGNORE INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                        (user_id, None, None, None, None, None, None, None, None, None, None))
-    connect_database.commit()
     #  После подтверждения заявки с БД basket.db удаляется вся инфо пользователя, соответственно при вызове сity
     #  выдает исключение, о том, что ячейка пустая. Решение: система try/except. Если, в basket.db нет инфы, мы
     #  будем брать его с cursor.db
+
+    database_db.execute("""INSERT OR IGNORE INTO users_orders VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                        (None, user_id, None, None, None, None, None, None, None, None, user_id))
+    connect_database.commit()
 
     city_in = database_db.execute("""SELECT city FROM users WHERE user_id = ?""", (user_id,)).fetchone()[0]
     comment = ""
     # Комментарии пользователей ===========================================================
     try:
-        comment = database_db.execute("""SELECT comment FROM users WHERE user_id = ?""", (user_id,)).fetchone()[0]
+        comment = database_db.execute("""SELECT comment FROM users_orders WHERE users_id = ?""", (user_id,)).fetchone()[0]
         if comment is None:
             comment = "без комментариев..."
     except (TypeError, AttributeError):
         pass
     # ====================================================================================================
     # выводим с БД basket users выбранный способ заявки
-    database_db.execute("""SELECT delivery FROM users WHERE user_id = ?""", (user_id,))
+    database_db.execute("""SELECT delivery FROM users_orders WHERE users_id = ?""", (user_id,))
     try:
         delivery = database_db.fetchone()[0].upper()
     except (TypeError, AttributeError):
@@ -213,7 +214,7 @@ async def process_back_to_basket(call: CallbackQuery):
         # ================================================================================================
         # подключение к БД date_add_db для вывода в консоль выбранную ДАТУ
         try:
-            database_db.execute(f"SELECT nurse_date_selected FROM date WHERE users_id = ?", (user_id,))
+            database_db.execute(f"SELECT date FROM nurse_date_selected WHERE users_id = ?", (user_id,))
             date_end = database_db.fetchone()[0] + " (-/+ 20 мин.)"
         except TypeError:
             date_end = "выберите дату!"
@@ -223,10 +224,11 @@ async def process_back_to_basket(call: CallbackQuery):
         database_db.execute("SELECT * FROM cities_payment")
         sampling = 0
         out_pay = 0
-        for i, (city_in_db, blood, out, address, phone, bank, all_sale) in enumerate(database_db.fetchall(), start=1):
-            if city_in == city_in_db:
-                sampling = blood
-                out_pay = out
+        for i, (city_pay, sampling_pay, exit_pay, address, phone, bank, all_sale, nurse_delivery,
+                nurse_income_day) in enumerate(database_db.fetchall(), start=1):
+            if city_in == city_pay:
+                sampling = sampling_pay
+                out_pay = exit_pay
                 admin_phone = phone
                 admin_bank = bank
 

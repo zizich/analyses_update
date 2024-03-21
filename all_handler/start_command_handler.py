@@ -16,11 +16,15 @@ router = Router(name=__name__)
 
 @router.message(CommandStart())
 async def process_start(message: Message, state: FSMContext):
-    user_id = message.from_user.id
+    user_id = message.chat.id
+
+    database_db.execute("""INSERT OR IGNORE INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                        (user_id, None, None, None, None, None, None, None, None, None, None, user_id))
+    connect_database.commit()
 
     try:
-        database_db.execute("SELECT fio, birth_date, phone, email, city, address"
-                            f" FROM users WHERE user_id = ?", (user_id,))
+        database_db.execute("SELECT fio, birth_date, phone, email, city, address FROM users WHERE user_id = ?",
+                            (user_id,))
         user = database_db.fetchall()
         for i, (fio, birth_date, phone, email, city, address) in enumerate(user, start=1):
             if city is None:
@@ -96,7 +100,6 @@ async def process_start(message: Message, state: FSMContext):
     except (sqlite3.OperationalError, TypeError):
         # логика: в БД added_analysis.db будем создавать каждый раз таблицу индивидуальную для каждого пользователя
         # и будем добавлять туда выбранный анализ
-
         database_db.execute(f"""INSERT OR IGNORE INTO users (user_id) VALUES (?)""", (user_id,))
         connect_database.commit()
 

@@ -98,8 +98,8 @@ async def process_email(message: Message, state: FSMContext):
                               f"\n\u267B\uFE0F Номер телефона: {data['waiting_for_phone']}"
                               f"\n\u267B\uFE0F Эл.почта: {data['waiting_for_email']}"
                               f"\n========================="
-                              f'\nГород: {city} \nВведите адрес в формате: '
-                              f'ул. Ленина, д.56-327')
+                              f'\nВы выбрали город: {city} \nТеперь введите адрес в формате - '
+                              f'ул. Ленина, д.00-000')
 
 
 # получение адреса, сохранение адреса
@@ -118,7 +118,7 @@ async def process_address(message: Message, state: FSMContext):
     # Обновляем базу данных
     database_db.execute(
         f"""UPDATE users SET fio = ?, birth_date = ?, phone = ?, email = ?, address = ? 
-            WHERE user_id = ?""", (fio, birth_date, phone, email, address, f"{user_id}-1"))
+            WHERE user_id = ?""", (fio, birth_date, phone, email, address, user_id))
     connect_database.commit()
 
     await state.update_data(waiting_for_address=message.text)
