@@ -1,6 +1,6 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from data_base import job_db
+from data_base import database_db
 
 
 async def edit_people(user_id):
@@ -27,8 +27,9 @@ async def back_to_edit_people():
 async def choice_city():
     keyboard = InlineKeyboardBuilder()
 
-    job_db.execute("""SELECT * FROM services""")
-    for i, (city, sampling, out_pay, address, phone, bank, all_sale) in enumerate(job_db.fetchall(), start=1):
+    database_db.execute("""SELECT * FROM cities_payment""")
+    for i, (city, sampling, exit_, address, phone, bank, all_sale, nurse_delivery,
+            nurse_income_day) in enumerate(database_db.fetchall(), start=1):
         keyboard.button(text=f"{city} \u23E9", callback_data=f"cityOtherAdd_{city}")
     keyboard.adjust(1)
 
@@ -38,8 +39,9 @@ async def choice_city():
 async def choice_edit_city():
     keyboard = InlineKeyboardBuilder()
 
-    job_db.execute("""SELECT * FROM services""")
-    for i, (city, sampling, out_pay, address, phone, bank, all_sale) in enumerate(job_db.fetchall(), start=1):
+    database_db.execute("""SELECT * FROM cities_payment""")
+    for i, (city, sampling, exit_, address, phone, bank, all_sale, nurse_delivery,
+            nurse_income_day) in enumerate(database_db.fetchall(), start=1):
         keyboard.button(text=f"{city} \u23E9", callback_data=f"cityEdit_{city}")
     keyboard.adjust(1)
 
