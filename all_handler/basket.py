@@ -35,14 +35,14 @@ async def process_basket(message: Message):
     comment = ""
     # Комментарии пользователей ===========================================================
     try:
-        comment = database_db.execute("""SELECT comment FROM users WHERE user_id = ?""", (user_id,)).fetchone()[0]
+        comment = database_db.execute("""SELECT comment FROM users_orders WHERE users_id = ?""", (user_id,)).fetchone()[0]
         if comment is None:
             comment = "без комментариев..."
     except (TypeError, AttributeError):
         pass
     # ====================================================================================================
     # выводим с БД basket users выбранный способ заявки
-    database_db.execute("""SELECT delivery FROM users WHERE user_id = ?""", (user_id,))
+    database_db.execute("""SELECT delivery FROM users_orders WHERE users_id = ?""", (user_id,))
     try:
         delivery = database_db.fetchone()[0].upper()
     except (TypeError, AttributeError):
@@ -68,7 +68,7 @@ async def process_basket(message: Message):
             # Добавляем номер перед каждым сообщением
             message_str = f"{i}.<b>{name.split('(')[0]}</b> - {price} р., {readiness} дн."
             messages.append(message_str)
-            all_prices_basket += price
+            all_prices_basket += int(price)
 
         # Присоединяем все сообщения в одну строку с помощью '\n'.json
         all_messages = "\n".join(messages)
@@ -77,7 +77,7 @@ async def process_basket(message: Message):
         # ================================================================================================
         # подключение к БД date_add_db для вывода в консоль выбранную ДАТУ
         try:
-            database_db.execute(f"SELECT nurse_date_selected FROM date WHERE users_id = ?", (user_id,))
+            database_db.execute(f"SELECT date FROM nurse_date_selected WHERE users_id = ?", (user_id,))
             date_end = database_db.fetchone()[0] + " (-/+ 20 мин.)"
         except TypeError:
             date_end = "выберите дату!"
@@ -759,12 +759,12 @@ async def process_edit_basket_analyses_menu(call: CallbackQuery):
     messages = []
 
     # выводим с БД basket.db таблицы basket_list список выбранных анализов
-    database_db.execute(f"SELECT * FROM users_analyses_selected WHERE users_id = ?", (user_id,))
+    database_db.execute(f"SELECT * FROM users_analyses_selected WHERE user_id = ?", (user_id,))
     result = database_db.fetchall()
     # итерируем получаемый список заказов
-    for i, (id_num, name, price, tube, readiness) in enumerate(result, start=1):
+    for i, (code_analyses, name_analysis, *_) in enumerate(result, start=1):
         # Добавляем номер перед каждым сообщением
-        message_str = f"{i}. <b>код {id_num}</b>: {name.split('(')[0]}"
+        message_str = f"{i}. <b>код {code_analyses}</b>: {name_analysis.split('(')[0]}"
         messages.append(message_str)
 
     # Присоединяем все сообщения в одну строку с помощью '\n'
@@ -808,16 +808,21 @@ async def process_edit_list_order(call: CallbackQuery, state: FSMContext):
 @router.message(States.waiting_for_edit_list_order)
 async def process_edit_list_order_done(message: Message, state: FSMContext):
     key = message.text
-    name = database_db.execute(f"SELECT name_analyses FROM users_analyses_selected WHERE code_analyses = ?",
-                               (key,)).fetchone()[0]
-    database_db.execute(f"DELETE FROM users_analyses_selected WHERE code_analyses = ?", (key,))
-    connect_database.commit()
 
     keyb = InlineKeyboardBuilder()
     keyb.button(text="назад \U000023EA", callback_data="back_to_basket_menu")
     keyb.adjust(1)
-    await message.answer(text=f"<b>{key}: {name}</b> => Удален!",
-                         reply_markup=keyb.as_markup())
+
+    try:
+        name = database_db.execute(f"SELECT name_analyses FROM users_analyses_selected WHERE code_analyses = ?",
+                                   (key,)).fetchone()[0]
+        database_db.execute(f"DELETE FROM users_analyses_selected WHERE code_analyses = ?", (key,))
+        connect_database.commit()
+        await message.answer(text=f"<b>{key}: {name}</b> => Удален!",
+                             reply_markup=keyb.as_markup())
+    except TypeError:
+        await message.answer(text=f"Анализов нет....",
+                             reply_markup=keyb.as_markup())
     await state.clear()
 
 

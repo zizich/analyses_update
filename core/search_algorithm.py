@@ -53,26 +53,32 @@ def search_analyses(name_search):
     for i, (sequence_number, code_number, analysis, synonyms, info, tube, readiness, sale, price, prime_cost,
             stop, commplex) in enumerate(dataBase.fetchall(), start=1):
         keyboard.button(text="{}\u20BD: {}".format(price, analysis.split('(')[0]),
-                        callback_data="id_{}".format(sequence_number))
+                        callback_data="id_{}".format(code_number))
         # создаем inline кнопки по полученным значениям из списка БД
     return keyboard
 
 
 # функция для сбора комплекса по запросу, возвращает строку
-def all_complex(complex_in):
+def all_complex(code_complex):
     selected = []  # для выбранных анализов
     sum_price = 0  # комплексная сумма передающая пользователю в консоль
 
     # ===========================================================================================================
-    result = database_db.execute("SELECT * FROM analyses WHERE complex = ?", (complex_in,))
+    # из кодировок анализов превращаем в коллекцию, для итерации в следующем цикле
+    list_code_analyses = (database_db.execute("SELECT code_analyses FROM analyses_complex "
+                                              "WHERE code_complex = ?", (code_complex,)).fetchone()[0]).split()
     # ===========================================================================================================
+    result = database_db.execute("""SELECT * FROM analyses""")
+    count = 0
     for i, (sequence_number, code_number, analysis, synonyms, info, tube, readiness, sale, price, prime_cost,
             stop, commplex) in enumerate(result, start=1):
-        selected.append(f"\n{i}) {analysis} - {price} \U000020BD, срок: {readiness} дн.")
-        sum_price += price
+        for code in list_code_analyses:
+            if code_number in code:
+                count += 1
+                selected.append(f"\n{count}) {analysis} - {price} \U000020BD, срок: {readiness} дн.")
+                sum_price += price
 
     text = "".join(selected)
-
     return text + f"\n==================\n<b>Общая сумма:</b> {sum_price} \U000020BD "
 
 # функция реализующая получение выбранного комплекса, возврат всех входящих анализов

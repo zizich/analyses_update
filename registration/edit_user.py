@@ -16,13 +16,14 @@ router = Router(name=__name__)
 # =============================ОБРАБОТКА КНОПКИ "РЕДАКТИРОВАТЬ ПРОФИЛЬ"=====================================
 @router.callback_query(F.data == "edit_profile")
 async def process_edit_profile(call: CallbackQuery):
-    user_id = call.message.from_user.id
+    user_id = call.message.chat.id
 
     database_db.execute("""SELECT fio, birth_date, phone, email, city, address FROM users WHERE user_id = ?""",
                         (user_id,))
-
+    print(user_id)
     for i, (fio, birth_date, phone, email, city, address) in enumerate(database_db.fetchall(), start=1):
-        await call.message.edit_text(text=f"<b>\U0001F3E0 Профиль:</b>"
+        await call.message.edit_text(text=f"<b>\U0001F3E0 РЕДАКТИРОВАТЬ ПРОФИЛЬ:</b>"
+                                          f"\n==========================="
                                           f"\n    ♻️ Ваш id:   <b>{user_id}</b>"
                                           f"\n    ♻️ ФИО:   <b>{fio}</b>"
                                           f"\n    ♻️ Номер телефона: <b>{phone}</b>"

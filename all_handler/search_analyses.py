@@ -83,10 +83,10 @@ async def process_find_search(message: Message, state: FSMContext):
 
 @router.callback_query(F.data.startswith('id_'))
 async def process_income_analysis(call: CallbackQuery):
-    idAnalyses = (call.data.split('id_')[1]).split("-")[0]
-    stop_analysis = database_db.execute("""SELECT stop FROM analyses WHERE sequence_number = ?""",
+    idAnalyses = call.data.split('id_')[1]
+    stop_analysis = database_db.execute("""SELECT stop FROM analyses WHERE code_number = ?""",
                                         (idAnalyses,)).fetchone()[0]
-    all_analyses = database_db.execute("""SELECT * FROM analyses WHERE sequence_number = ?""", (idAnalyses,))
+    all_analyses = database_db.execute("""SELECT * FROM analyses WHERE code_number = ?""", (idAnalyses,))
 
     name_analysis = ""
     if stop_analysis == 1:
@@ -139,24 +139,49 @@ async def previous_search(call: CallbackQuery):
 @router.callback_query(F.data.startswith('addAn_'))
 async def processing_found_analysis_search(call: CallbackQuery):
     user_id = call.message.chat.id
-    idAnalyses = (call.data.split('addAn_')[1]).split("-")[0]
+    idAnalyses = call.data.split('addAn_')[1]
 
-    result = database_db.execute("""SELECT * FROM analyses WHERE sequence_number = ?""", (idAnalyses,)).fetchall()
+    try:
+        database_db.execute("""SELECT * FROM users_analyses_selected WHERE user_id = ?""", (user_id,))
+        for i, (code_analyses, *_) in enumerate(database_db.fetchall(), start=1):
+            if str(code_analyses) in str(idAnalyses):
+                await call.message.edit_text(text="Анализ уже в корзине...", reply_markup=await kb_previous_search())
+                break
+        else:
+            result = database_db.execute("""SELECT * FROM analyses WHERE code_number = ?""", (idAnalyses,)).fetchall()
 
-    text_for_added = ""
-    for i, (sequence_number, code_number, analysis, synonyms, info, tube, readiness, sale, price, prime_cost,
-            stop, commplex) in enumerate(result, start=1):
-        income = price - prime_cost
-        database_db.execute(f"INSERT OR IGNORE INTO users_analyses_selected VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                            (sequence_number, analysis.split('(')[0], tube, readiness, price, prime_cost, income,
-                             user_id))
-        connect_database.commit()
+            text_for_added = ""
+            for i, (sequence_number, code_number, analysis, synonyms, info, tube, readiness, sale, price, prime_cost,
+                    stop, commplex) in enumerate(result, start=1):
+                income = price - prime_cost
+                database_db.execute(f"INSERT OR IGNORE INTO users_analyses_selected VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                                    (sequence_number, analysis.split('(')[0], tube, readiness, price,
+                                     prime_cost, income, user_id))
+                connect_database.commit()
 
-        text_for_added = (f"{analysis.split('(')[0]}"
-                          "\n==========================="
-                          "\n\U00002705 Добавлено в КОРЗИНУ!")
+                text_for_added = (f"{analysis.split('(')[0]}"
+                                  "\n==========================="
+                                  "\n\U00002705 Добавлено в КОРЗИНУ!")
 
-    await call.message.edit_text(text=text_for_added, reply_markup=await kb_previous_search())
+            await call.message.edit_text(text=text_for_added, reply_markup=await kb_previous_search())
+    except TypeError:
+        result = database_db.execute("""SELECT * FROM analyses WHERE code_number = ?""", (idAnalyses,)).fetchall()
+
+        text_for_added = ""
+        for i, (sequence_number, code_number, analysis, synonyms, info, tube, readiness, sale, price, prime_cost,
+                stop, commplex) in enumerate(result, start=1):
+
+            income = price - prime_cost
+            database_db.execute(f"INSERT OR IGNORE INTO users_analyses_selected VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                                (sequence_number, analysis.split('(')[0], tube, readiness, price, prime_cost, income,
+                                 user_id))
+            connect_database.commit()
+
+            text_for_added = (f"{analysis.split('(')[0]}"
+                              "\n==========================="
+                              "\n\U00002705 Добавлено в КОРЗИНУ!")
+
+        await call.message.edit_text(text=text_for_added, reply_markup=await kb_previous_search())
 
 
 # ОБРАБОТКА КНОПКИ КАЖДОЙ ФУНКЦИИ АНАЛИЗА (ИНФО)
@@ -217,12 +242,12 @@ async def process_complex_watch(call: CallbackQuery):
     keyboard = InlineKeyboardBuilder()
 
     try:
-        name = call.data.split('grp_')[1]
-        text_output = all_complex(name)
+        code_complex = call.data.split('grp_')[1]
+        text_output = all_complex(code_complex)
 
         async def kb_info_complex():
-            keyboard.button(text="добавить", callback_data=f"addSlctd_{name}")
-            keyboard.button(text="удалить", callback_data=f"delSlctd_{name}")
+            keyboard.button(text="добавить", callback_data=f"addSlctd_{code_complex}")
+            keyboard.button(text="удалить", callback_data=f"delSlctd_{code_complex}")
             keyboard.button(text="назад \U000023EA", callback_data="group_buttons")
             keyboard.adjust(2)
             return keyboard.as_markup()
@@ -241,20 +266,29 @@ async def process_complex_watch(call: CallbackQuery):
 @router.callback_query(F.data.startswith("addSlctd_"))
 async def process_komplex_add(call: CallbackQuery):
     user_id = call.message.chat.id
-    name_complex = call.data.split('addSlctd_')[1]
-    # ======================================================================================================
-    database_db.execute("""SELECT * FROM analyses WHERE complex = ?""", (name_complex,))
-    result = database_db.fetchall()
-    # ======================================================================================================
+    code_complex = call.data.split('addSlctd_')[1]
     outcome = ""
-
+    # ======================================================================================================
+    # это таблица комплекса анализов, выбранный комплекс вытаскиваем с таблицы
+    list_code_analyses = (database_db.execute("SELECT code_analyses FROM analyses_complex "
+                                              "WHERE code_complex = ?", (code_complex,)).fetchone()[0]).split()
+    print(list_code_analyses)
+    # ===========================================================================================================
+    # вытаскиваем все анализы из таблицы анализов
+    database_db.execute("""SELECT * FROM analyses""")
+    # ===========================================================================================================
+    # вытаскиваем все анализы которые есть в таблицы добавленных анализов
+    # ===========================================================================================================
+    count = 0
     for i, (sequence_number, code_number, analysis, synonyms, info, tube, readiness, sale, price, prime_cost,
-            stop, commplex) in enumerate(result, start=1):
-        income = price - prime_cost
-        database_db.execute(f"INSERT OR IGNORE INTO users_analyses_selected VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                            (code_number, analysis, tube, readiness, price, prime_cost, income, user_id))
-        connect_database.commit()
-        outcome = "\U00002705 Добавлено в Корзину!"
+            stop, commplex) in enumerate(database_db.fetchall(), start=1):
+        for code in list_code_analyses:
+            if code_number in code:
+                income = price - prime_cost
+                database_db.execute(f"INSERT OR IGNORE INTO users_analyses_selected VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                                    (code_number, analysis, tube, readiness, price, prime_cost, income, user_id))
+                connect_database.commit()
+                outcome = "\U00002705 Добавлено в Корзину!"
 
     async def kb_buttons_in():
         keyboard = InlineKeyboardBuilder()
@@ -263,6 +297,8 @@ async def process_komplex_add(call: CallbackQuery):
         keyboard.adjust(1)
         return keyboard.as_markup()
 
+    name_complex = database_db.execute("""SELECT name_complex FROM analyses_complex WHERE code_complex = ?""",
+                                       (code_complex,)).fetchone()[0]
     await call.message.edit_text(text="Комплекс: " + name_complex + "\n" + outcome, reply_markup=await kb_buttons_in())
 
 
