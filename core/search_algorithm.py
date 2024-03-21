@@ -45,10 +45,10 @@ def search_analyses(name_search):
     # Выводим из БД список всех анализов и их параметров. Итерируем анализы по полученной группе (сортировка по
     # уникальному номеру каждого анализа, поиск осуществляется непосредственно по запросу SQL
     dataBase = database_db.execute(f"SELECT * FROM analyses WHERE "
-                                   f"name_analysis LIKE '%{name_search}%' OR "
-                                   f"name_analysis LIKE '%{name_search.capitalize()}%' OR "
-                                   f"name_analysis LIKE '%{name_search.lower()}%' OR "
-                                   f"name_analysis LIKE '%{name_search.upper()}%'")
+                                   f"name LIKE '%{name_search}%' OR "
+                                   f"name LIKE '%{name_search.capitalize()}%' OR "
+                                   f"name LIKE '%{name_search.lower()}%' OR "
+                                   f"name LIKE '%{name_search.upper()}%'")
 
     for i, (sequence_number, code_number, analysis, synonyms, info, tube, readiness, sale, price, prime_cost,
             stop, commplex) in enumerate(dataBase.fetchall(), start=1):

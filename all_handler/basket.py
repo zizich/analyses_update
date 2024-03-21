@@ -205,7 +205,7 @@ async def process_back_to_basket(call: CallbackQuery):
             # Добавляем номер перед каждым сообщением
             message_str = f"{i}.<b>{name.split('(')[0]}</b> - {price} р., {readiness} дн."
             messages.append(message_str)
-            all_prices_basket += price
+            all_prices_basket += int(price)
 
         # Присоединяем все сообщения в одну строку с помощью '\n'.json
         all_messages = "\n".join(messages)
