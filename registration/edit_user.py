@@ -130,14 +130,7 @@ async def process_edit_city_user(call: CallbackQuery):
 async def process_add_city(call: CallbackQuery):
     user_id = call.message.chat.id
 
-    database_db.execute("""INSERT OR IGNORE INTO users_orders VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                        (None, user_id, None, None, None, None, None, None, None, None, user_id))
-    connect_database.commit()
-
     city = call.data.split("cityEdit_")[1]
-
-    database_db.execute("""UPDATE users_orders SET city = ? WHERE users_id = ?""", (city, user_id))
-    connect_database.commit()
 
     database_db.execute(f"""UPDATE users SET city = ? WHERE user_id = ?""", (city, user_id))
     connect_database.commit()

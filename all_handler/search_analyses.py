@@ -279,15 +279,22 @@ async def process_komplex_add(call: CallbackQuery):
     # ===========================================================================================================
     # вытаскиваем все анализы которые есть в таблицы добавленных анализов
     # ===========================================================================================================
-    count = 0
     for i, (sequence_number, code_number, analysis, synonyms, info, tube, readiness, sale, price, prime_cost,
             stop, commplex) in enumerate(database_db.fetchall(), start=1):
         for code in list_code_analyses:
             if code_number in code:
                 income = price - prime_cost
-                database_db.execute(f"INSERT OR IGNORE INTO users_analyses_selected VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                                    (code_number, analysis, tube, readiness, price, prime_cost, income, user_id))
+                database_db.execute("""
+                    INSERT INTO users_analyses_selected 
+                    SELECT ?, ?, ?, ?, ?, ?, ?, ? 
+                    WHERE NOT EXISTS (
+                        SELECT 1 FROM users_analyses_selected 
+                        WHERE code_analyses = ? AND name_analyses = ? AND tube = ? AND readiness = ? AND price = ? AND 
+                        price_cost = ? AND income = ? AND user_id = ?)""",
+                                    (code_number, analysis, tube, readiness, price, prime_cost, income, user_id,
+                                     code_number, analysis, tube, readiness, price, prime_cost, income, user_id))
                 connect_database.commit()
+
                 outcome = "\U00002705 Добавлено в Корзину!"
 
     async def kb_buttons_in():

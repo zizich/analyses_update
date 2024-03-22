@@ -48,14 +48,14 @@ async def process_other_profile_back(call: CallbackQuery):
     keyboard = InlineKeyboardBuilder()
     try:
         async def kb_others_list():
-            unique_code = f"{uuid.uuid4()}"[:10]
+            unique_cod = f"{uuid.uuid4()}"[:10]
             for i, (id_us, fio) in enumerate(db_profile, start=1):
                 if id_us in str(user_id):
                     pass
                 else:
                     keyboard.button(text=f"{fio}", callback_data=f"others_{id_us}")
 
-            keyboard.button(text="добавить \U00002795", callback_data=f"people_{unique_code}")
+            keyboard.button(text="добавить \U00002795", callback_data=f"people_{unique_cod}")
             keyboard.adjust(1)
 
             return keyboard.as_markup()
@@ -63,8 +63,8 @@ async def process_other_profile_back(call: CallbackQuery):
         await call.message.edit_text("Список: ", reply_markup=await kb_others_list())
 
     except TypeError:
-        unique_cod = f"{uuid.uuid4()}"[:10]
-        keyboard.button(text="добавить \U00002795", callback_data=f"people_{unique_cod}")
+        unique_co = f"{uuid.uuid4()}"[:10]
+        keyboard.button(text="добавить \U00002795", callback_data=f"people_{unique_co}")
         keyboard.adjust(1)
         await call.message.answer("Список пуст!", reply_markup=keyboard.as_markup())
 
