@@ -155,7 +155,7 @@ async def processing_found_analysis_search(call: CallbackQuery):
                     stop, commplex) in enumerate(result, start=1):
                 income = price - prime_cost
                 database_db.execute(f"INSERT OR IGNORE INTO users_analyses_selected VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                                    (sequence_number, analysis.split('(')[0], tube, readiness, price,
+                                    (code_number, analysis.split('(')[0], tube, readiness, price,
                                      prime_cost, income, user_id))
                 connect_database.commit()
 
@@ -173,7 +173,7 @@ async def processing_found_analysis_search(call: CallbackQuery):
 
             income = price - prime_cost
             database_db.execute(f"INSERT OR IGNORE INTO users_analyses_selected VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                                (sequence_number, analysis.split('(')[0], tube, readiness, price, prime_cost, income,
+                                (code_number, analysis.split('(')[0], tube, readiness, price, prime_cost, income,
                                  user_id))
             connect_database.commit()
 

@@ -32,14 +32,15 @@ async def process_basket(message: Message):
     comment = ""
     # Комментарии пользователей ===========================================================
     try:
-        comment = database_db.execute("""SELECT comment FROM users_orders WHERE users_id = ?""", (user_id,)).fetchone()[0]
+        comment = database_db.execute("""SELECT comment FROM users_comments WHERE user_id = ?""",
+                                      (user_id,)).fetchone()[0]
         if comment is None:
             comment = "без комментариев..."
     except (TypeError, AttributeError):
-        pass
+        comment = "без комментариев..."
     # ====================================================================================================
     # выводим с БД basket users выбранный способ заявки
-    database_db.execute("""SELECT delivery FROM users_orders WHERE users_id = ?""", (user_id,))
+    database_db.execute("""SELECT delivery FROM nurse_date_selected WHERE user_id = ?""", (user_id,))
     try:
         delivery = database_db.fetchone()[0].upper()
     except (TypeError, AttributeError):
@@ -74,8 +75,8 @@ async def process_basket(message: Message):
         # ================================================================================================
         # подключение к БД date_add_db для вывода в консоль выбранную ДАТУ
         try:
-            database_db.execute(f"SELECT date FROM nurse_date_selected WHERE users_id = ?", (user_id,))
-            date_end = database_db.fetchone()[0] + " (-/+ 20 мин.)"
+            database_db.execute(f"SELECT date FROM nurse_date_selected WHERE user_id = ?", (user_id,))
+            date_end = database_db.fetchone()[0] + " (-/+ 10 мин.)"
         except TypeError:
             date_end = "выберите дату!"
         # ================================================================================================
@@ -164,14 +165,15 @@ async def process_back_to_basket(call: CallbackQuery):
     comment = ""
     # Комментарии пользователей ===========================================================
     try:
-        comment = database_db.execute("""SELECT comment FROM users_orders WHERE users_id = ?""", (user_id,)).fetchone()[0]
+        comment = database_db.execute("""SELECT comment FROM users_comments WHERE user_id = ?""",
+                                      (user_id,)).fetchone()[0]
         if comment is None:
             comment = "без комментариев..."
     except (TypeError, AttributeError):
-        pass
+        comment = "без комментариев..."
     # ====================================================================================================
     # выводим с БД basket users выбранный способ заявки
-    database_db.execute("""SELECT delivery FROM users_orders WHERE users_id = ?""", (user_id,))
+    database_db.execute("""SELECT delivery FROM nurse_date_selected WHERE user_id = ?""", (user_id,))
     try:
         delivery = database_db.fetchone()[0].upper()
     except (TypeError, AttributeError):
@@ -206,8 +208,8 @@ async def process_back_to_basket(call: CallbackQuery):
         # ================================================================================================
         # подключение к БД date_add_db для вывода в консоль выбранную ДАТУ
         try:
-            database_db.execute(f"SELECT date FROM nurse_date_selected WHERE users_id = ?", (user_id,))
-            date_end = database_db.fetchone()[0] + " (-/+ 20 мин.)"
+            database_db.execute(f"SELECT date FROM nurse_date_selected WHERE user_id = ?", (user_id,))
+            date_end = database_db.fetchone()[0] + " (-/+ 10 мин.)"
         except TypeError:
             date_end = "выберите дату!"
         # ================================================================================================
@@ -376,15 +378,12 @@ async def process_exit_or_self(call: CallbackQuery):
     global transfer_date
     user_id = call.message.chat.id
 
-    database_db.execute("""UPDATE users_orders SET delivery = ? WHERE users_id = ?""", ("вызов на дом", user_id))
-    connect_database.commit()
-
     city = database_db.execute("""SELECT city FROM users_selected WHERE user_id = ?""", (user_id,)).fetchone()[0]
 
     # Выносим из БД все даты выбранные
-    database_db.execute(f"SELECT * FROM nurse_date_selected WHERE users_id = ?", (user_id,))
+    database_db.execute(f"SELECT * FROM nurse_date_selected WHERE user_id = ?", (user_id,))
     try:
-        for i, (date_found) in enumerate(database_db.fetchall(), start=1):
+        for i, (date_found, nurse_id, users_id, emoji, city, delivery) in enumerate(database_db.fetchall(), start=1):
             if date_found:  # сравниваем есть ли отмеченная дата у данного пользователя
                 keyboard_after_add_date = InlineKeyboardBuilder()
 
@@ -392,13 +391,13 @@ async def process_exit_or_self(call: CallbackQuery):
                 kb = gth_after_add_date(keyboard_after_add_date, date_found)
 
                 # времени кнопки-даты с БД добавляются в коллекцию
-                if len(transfer_date) > 30:
+                if len(transfer_date) > 20:
                     text_delivery = "самообращение"
                 else:
                     text_delivery = "вызов на дом"
                 await call.message.edit_text(text="\u2705 Вы записаны на "
                                                   "\n{} \U000027A1\U0000FE0F: {}".format(text_delivery,
-                                                                                         transfer_date.split("_")[0]),
+                                                                                         transfer_date),
                                              reply_markup=await kb)
 
                 break
@@ -465,13 +464,10 @@ async def process_exit_or_self(call: CallbackQuery):
     global transfer_date
     user_id = call.message.chat.id
 
-    database_db.execute("""UPDATE users_orders SET delivery = ? WHERE users_id = ?""", ("самообращение", user_id))
-    connect_database.commit()
-
-    city = database_db.execute("""SELECT city FROM users_orders WHERE users_id = ?""", (user_id,)).fetchone()[0]
+    city = database_db.execute("""SELECT city FROM users_selected WHERE user_id = ?""", (user_id,)).fetchone()[0]
 
     # Выносим из БД все даты выбранные
-    database_db.execute(f"SELECT date FROM nurse_date_selected WHERE users_id = ?", (user_id,))
+    database_db.execute(f"SELECT date FROM nurse_date_selected WHERE user_id = ?", (user_id,))
     date_in = database_db.fetchone()
     try:
         async def kb_gtc_after_add_date():
@@ -485,25 +481,24 @@ async def process_exit_or_self(call: CallbackQuery):
             keyboard_after_add_date.adjust(1)
             return keyboard_after_add_date.as_markup()
 
-        if len(transfer_date) > 30:
+        if len(transfer_date) > 20:
             text_delivery = "самообращение"
         else:
             text_delivery = "вызов на дом"
         await call.message.edit_text(text="\u2705 Вы записаны на "
                                           "\n{} \U000027A1\U0000FE0F: {}".format(text_delivery,
-                                                                                 transfer_date.split("_")[0]),
+                                                                                 transfer_date),
                                      reply_markup=await kb_gtc_after_add_date())
 
     except TypeError:
         database_db.execute("""SELECT * FROM nurse_date_selected WHERE city = ?""", (city,))
-
         try:
             async def kb_gtc_add_date():
                 kb_gtc_date = InlineKeyboardBuilder()
                 collection_date = []
                 for i, (date, nurse_id, users_id, emoji, city_date,
                         delivery) in enumerate(database_db.fetchall(), start=1):
-                    if delivery in "самообращение" and emoji == "\U0001F4CC":
+                    if delivery in "самообращение" and emoji in "\U0001F4CC":
                         collection_date.append(date.split(' ')[0])
                         # keyboard_gtm.button(text=f"{date.split('_')[0]} {done}", callback_data=f"unique_{date}")
 
@@ -529,19 +524,18 @@ async def process_exit_or_self(call: CallbackQuery):
 @router.callback_query(lambda c: c.data.startswith("gtcAddDate_"))
 async def process_gtc_time(call: CallbackQuery):
     user_id = call.message.chat.id
-    city = database_db.execute("""SELECT city FROM users_orders WHERE user_id = ?""", (user_id,)).fetchone()[0]
+    city = database_db.execute("""SELECT city FROM users_selected WHERE user_id = ?""", (user_id,)).fetchone()[0]
     input_date = call.data.split('gtcAddDate_')[1]
 
-    database_db.execute("""SELECT * FROM nurse WHERE city = ?""", (city,))
-    dateAdd = database_db.fetchall()
+    database_db.execute("""SELECT * FROM nurse_date_selected WHERE city = ?""", (city,))
 
     async def kb_gtc_add_time():
         kb_builder = InlineKeyboardBuilder()
-        for p, (date, nurse_id, users_id, emoji, city_date, delivery) in enumerate(dateAdd, start=1):
+        for p, (date, nurse_id, users_id, emoji, city_date, delivery) in enumerate(database_db.fetchall(), start=1):
             if delivery in "самообращение" and emoji in "\U0001F4CC":
                 if input_date in date:
                     kb_builder.button(text=f"{(date.split('_')[0]).split(' ')[1]} {emoji}",
-                                      callback_data=f"unique_{date}-{nurse_id}")
+                                      callback_data=f"unique_{date}>{nurse_id}")
         kb_builder.adjust(1)
         kb_builder.button(text="назад \U000023EA", callback_data="go_to_medical")
         return kb_builder.as_markup()
@@ -560,17 +554,14 @@ async def process_order_date_with_midwifery(call: CallbackQuery):
     global transfer_date
     user_id = call.message.chat.id
 
-    date = (call.data.split("unique_")[1]).split("-")[0]
-    nurse_id = (call.data.split("unique_")[1]).split("-")[1]
+    date = (call.data.split("unique_")[1]).split(">")[0]
+    nurse_id = (call.data.split("unique_")[1]).split(">")[1]
 
     transfer_date = "{}_{}".format(date, nurse_id)
 
-    database_db.execute("""UPDATE users_orders SET nurse_id = ? WHERE user_id = ?""", (nurse_id, user_id))
-    connect_database.commit()
-
     # добавляем в БД фельдшера выбранную дату со значком "галочка"
-    database_db.execute(f"""UPDATE nurse_date_selected SET done = ? WHERE date = ?""",
-                        ("\U0001F530", f"{date}_{nurse_id}"))
+    database_db.execute(f"""UPDATE nurse_date_selected SET emoji = ?, user_id = ? WHERE date = ? AND nurse_id = ?""",
+                        ("\U0001F530", user_id, date, nurse_id))
     connect_database.commit()
 
     async def kb_back():
@@ -595,14 +586,12 @@ async def process_order_date_with_midwifery(call: CallbackQuery):
 @router.callback_query(lambda c: c.data.startswith("delAddDate"))
 async def process_delete_date_in_database(call: CallbackQuery):
     global transfer_date
-    user_id = call.message.chat.id
+
     date = call.data.split("delAddDate")[1]
 
     # добавляем в БД фельдшера выбранную дату со значком "инструмент"
-    database_db.execute("UPDATE nurse_date_selected SET done = ? WHERE date = ?", ("\U0001F4CC", date))
-    connect_database.commit()
-
-    database_db.execute("""UPDATE users_orders SET delivery = ? WHERE user_id = ?""", (None, user_id))
+    database_db.execute("UPDATE nurse_date_selected SET emoji = ?, user_id = ? WHERE date = ?",
+                        ("\U0001F4CC", None, date))
     connect_database.commit()
 
     async def kb_back():
@@ -620,26 +609,26 @@ async def process_pattern(call: CallbackQuery):
     await call.message.edit_text(text="\U0001F39E Список шаблонов: ", reply_markup=await kb_patterns())
 
 
-@router.callback_query(lambda c: c.data and c.data.startswith("pat_"))
+@router.callback_query(F.data.startswith("pat_"))
 async def process_pattern_found(call: CallbackQuery):
-
     pattern_found = call.data.split('pat_')[1]
     # выводим из БД шаблонов цифры полученные из наименования
     id_numbers = database_db.execute(f"""SELECT analyses_sequence_numbers FROM users_pattern WHERE name_pattern = ?""",
                                      (pattern_found,)).fetchone()[0]
     # переводим id_numbers в список
     selected = [item.strip() for item in id_numbers.split(",")]
-    # получаем все данные из БД анализов
-    database_db.execute("""SELECT * FROM analyses""")
+    print(selected)
     # переменная для получения суммы цен всех анализов из БД
     summ_text_pattern = 0
     # список для получения текста содержащее имени, цену и срок готовности анализа в шаблоне
     collection_text_pattern = []
     count = 1
+    # получаем все данные из БД анализов
+    database_db.execute("""SELECT * FROM analyses""")
     # итерируем БД анализов и ищем из него анализы в шаблоне
     for i, (sequence_number, code_number, analysis, synonyms, info, tube, readiness, sale, price, prime_cost, stop,
             commplex) in enumerate(database_db.fetchall(), start=1):
-        if code_number in map(int, selected):
+        if code_number in map(str, selected):
             text_pattern = f"{count}. {analysis}: {price} \u20BD Срок: {readiness} дн."
             collection_text_pattern.append(text_pattern)
             connect_database.commit()
@@ -672,7 +661,7 @@ async def process_pattern_found(call: CallbackQuery):
 
     pattern_found = call.data.split('add_pattern_')[1]
 
-    id_numbers = database_db.execute(f"""SELECT analysis_sequence_numbers FROM users_pattern WHERE date = ?""",
+    id_numbers = database_db.execute(f"""SELECT analyses_sequence_numbers FROM users_pattern WHERE name_pattern = ?""",
                                      (pattern_found,)).fetchone()[0]
     database_db.execute("""SELECT * FROM analyses""")
 
@@ -756,11 +745,10 @@ async def process_edit_basket_analyses_menu(call: CallbackQuery):
     user_id = call.message.chat.id
     messages = []
 
-    # выводим с БД basket.db таблицы basket_list список выбранных анализов
+    # выводим с БД таблицы users_analyses_selected список выбранных анализов
     database_db.execute(f"SELECT * FROM users_analyses_selected WHERE user_id = ?", (user_id,))
-    result = database_db.fetchall()
     # итерируем получаемый список заказов
-    for i, (code_analyses, name_analysis, *_) in enumerate(result, start=1):
+    for i, (code_analyses, name_analysis, *_) in enumerate(database_db.fetchall(), start=1):
         # Добавляем номер перед каждым сообщением
         message_str = f"{i}. <b>код {code_analyses}</b>: {name_analysis.split('(')[0]}"
         messages.append(message_str)
@@ -797,7 +785,22 @@ async def process_edit_basket_analyses_menu(call: CallbackQuery):
 
 @router.callback_query(lambda c: c.data == "edit_analyses_list")
 async def process_edit_list_order(call: CallbackQuery, state: FSMContext):
-    await call.message.answer(text='\U0001F522 Введите КОД-анализа, которого хотите удалить:')
+    user_id = call.message.chat.id
+    messages = []
+
+    # выводим с БД таблицы users_analyses_selected список выбранных анализов
+    database_db.execute(f"SELECT * FROM users_analyses_selected WHERE user_id = ?", (user_id,))
+    # итерируем получаемый список заказов
+    for i, (code_analyses, name_analysis, *_) in enumerate(database_db.fetchall(), start=1):
+        # Добавляем номер перед каждым сообщением
+        message_str = f"{i}. <b>код {code_analyses}</b>: {name_analysis.split('(')[0]}"
+        messages.append(message_str)
+
+    # Присоединяем все сообщения в одну строку с помощью '\n'
+    all_messages = "\n".join(messages)
+    await call.message.edit_text(text=f'{all_messages}'
+                                      f'\n========================'
+                                      f'\n\U0001F522 Введите КОД-анализа, которого хотите удалить:')
 
     await state.set_state(States.waiting_for_edit_list_order)
 
@@ -839,8 +842,9 @@ async def process_edit_list_order_done(message: Message, state: FSMContext):
 # ==========================================================================================================
 @router.callback_query(lambda c: c.data == "delete_analyses_list")
 async def process_edit_basket_analyses_menu(call: CallbackQuery):
+    user_id = call.message.chat.id
 
-    database_db.execute(f"DELETE FROM users_analyses_selected")
+    database_db.execute(f"DELETE FROM users_analyses_selected WHERE user_id = ?", (user_id,))
     connect_database.commit()
 
     async def delete_list_analyses():
@@ -883,8 +887,7 @@ async def process_add_comment_basket(call: CallbackQuery, state: FSMContext):
 @router.message(States.waiting_for_add_comment)
 async def process_edit_female_three_done(message: Message, state: FSMContext):
     comment = message.text
-    database_db.execute("""UPDATE users_orders SET comment = ? WHERE user_id = ?""",
-                        (comment, message.from_user.id))
+    database_db.execute("""INSERT INTO users_comments VALUES (?, ?)""", (message.from_user.id, comment))
     connect_database.commit()
 
     keyb_back = InlineKeyboardBuilder()
@@ -902,7 +905,6 @@ async def process_edit_female_three_done(message: Message, state: FSMContext):
 
 @router.callback_query(lambda c: c.data == "confirm_the_order")
 async def process_confirm_the_order(call: CallbackQuery):
-
     async def kb_confirm():
         kb_conf = InlineKeyboardBuilder()
         kb_conf.button(text="Подтвердить заявку \U0000267B \U0000FE0F", callback_data="confirm_button")
@@ -926,15 +928,18 @@ async def process_confirm_basket(call: CallbackQuery):
     user_id = call.message.chat.id
 
     # ===================================================================================================
-    message_name = ""  # переменная для получения ФИО (и других данных) выбранного человек
-    tube_for_midwifary = []  # переменная для получения значения
+    name_for_orders = ""  # переменная для получения ФИО (и других данных) выбранного человек
+    tube_for_nurse = []  # переменная для получения значения о пробирках
     collection_analysis = []  # переменная для получения каждого анализа
     collection_analysis_all = []  # коллекция добавляет только наименование анализов и передает в БД медсестрам
     fio_by_dir = ""
-    prices = 0
+    all_prices = 0
     id_midwiferys = ""
+    date_selected = "Выберите дату"
     delivery = ""
-    user_address = ""  # передаем адрес для медсестер
+    user_address = ""   # передаем адрес для медсестер
+    string_collection = []  # коллекция для получения анализов
+    price_cost_all_analyses = 0  # для получения суммы себестоимости всех анализов
     comment = ""
 
     # ===================================================================================================
@@ -947,81 +952,100 @@ async def process_confirm_basket(call: CallbackQuery):
     # ===================================================================================================
 
     # =========================РАБОТА С БАЗОЙ ДАННЫХ ВЫБРАННЫХ ЗНАЧЕНИЙ==================================
-    #  _1 вытаскиваем с БД все выбранные анализы
+    # ===================================================================================================
+    # ===================================================================================================
+    #  _1 вытаскиваем с БД все выбранные анализы, цены на них и пробирку
     database_db.execute(f"SELECT * FROM users_analyses_selected WHERE user_id = ?", (user_id,))
 
     for i, (code_analyses, name_analysis, tube, readiness, price, price_cost, income,
             user_id) in enumerate(database_db.fetchall(), start=1):
+        # -------------------------------------------------------------------------
         message_analysis = f"{code_analyses}>>{name_analysis}: {price} р., срок: {readiness} дн."
         analyses_add = f"{code_analyses}>>{name_analysis};"
+        long_string = (f"*** {code_analyses}: {name_analysis} \n---- цена: {price} р. "
+                       f"стоимость: {price_cost} р. кэш: {income}")
+        # -------------------------------------------------------------------------
         collection_analysis.append(message_analysis)
         collection_analysis_all.append(analyses_add)
-        if code_analyses < 483:
-            tube_for_midwifary.append(f"1шт - {tube}")
-        else:
-            tube_for_midwifary.append(f"1шт - {tube}")
-
-        prices += price
+        string_collection.append(long_string)
+        tube_for_nurse.append(f"1шт - {tube}")
+        # -------------------------------------------------------------------------
+        all_prices += int(price)
+        price_cost_all_analyses += int(price_cost)
+        # -------------------------------------------------------------------------
 
     list_analysis = list(set(collection_analysis))
-    tube_collection = list(set(tube_for_midwifary))
-    tube = "\n".join(tube_collection)
-    analysis_all = "\n".join(list_analysis)
-    analysis_by_order_done = ", ".join(collection_analysis_all)
+    analyses_for_profit = "\n".join(string_collection)
+    tube = "\n".join(tube_for_nurse)
+    analyses_for_users = "\n".join(list_analysis)
+    analyses_for_nurse = ", ".join(collection_analysis_all)
+    # ===================================================================================================
+    # ===================================================================================================
 
-    # ОБРАЗОВАНИЕ ОБЩЕЙ СУММЫ АНАЛИЗОВ ========================================================================
-    city_in_db_basket_add = database_db.execute("""SELECT city FROM users_orders WHERE user_id = ?""",
-                                                (user_id,)).fetchone()[0]
-    database_db.execute("SELECT * FROM cities_payment")
+    # ОБРАЗОВАНИЕ ОБЩЕЙ СУММЫ АНАЛИЗОВ учитывая способ заявки ===========================================
+    city_add = database_db.execute("""SELECT city FROM users_selected WHERE user_id = ?""",
+                                   (user_id,)).fetchone()[0]
+    database_db.execute("SELECT * FROM cities_payment WHERE city = ?", (city_add,))
     sampling = 0
     out_pay = 0
-    for i, (city_in_db_services, blood, out, street, phone, bank, all_sale) in enumerate(database_db.fetchall(),
-                                                                                         start=1):
-        if city_in_db_services == city_in_db_basket_add:
-            sampling = blood
-            out_pay = out
+    for i, (city, blood, out, *_) in enumerate(database_db.fetchall(), start=1):
+        sampling = blood
+        out_pay = out
 
-    out_dor = database_db.execute("""SELECT delivery FROM users_orders WHERE user_id = ?""", (user_id,)).fetchone()[0]
-    if prices + sampling >= 2500 or out_dor == "самообращение":
-        prices += sampling
-    else:
-        prices += out_pay + sampling
+    # ===================================================================================================
+    # ===================================================================================================
+    #  _2 вытаскиваем с БД способы заявки(вызов на дом или самообращение), nurse_id
 
-    # ========================================================================================================
+    database_db.execute("""SELECT * FROM nurse_date_selected WHERE user_id = ?""", (user_id,))
+    for c, (date, nurse_id, users_id, emoji, city, delivery_nurse) in enumerate(database_db.fetchall(), start=1):
+        id_midwiferys = nurse_id
+        date_selected = date
+        delivery = delivery_nurse
+        if all_prices + sampling >= 2500 or delivery_nurse == "самообращение":
+            all_prices += sampling
+        else:
+            all_prices += out_pay + sampling
 
-    # _2 вытаскиваем дату и сравниваем есть ли такая дата в БД
-    database_db.execute("SELECT date_add FROM nurse_date_selected WHERE users_id = ?", (user_id,))
+    # ===================================================================================================
+    # ===================================================================================================
+    # ===================================================================================================
 
-    # _3 вытаскиваем с БД basket выбранного человека и добавляем в БД basket в таблицу user_{user_id}
+    # _3 вытаскиваем с таблицы users_selected выбранного человека
     database_db.execute("SELECT * FROM users_selected WHERE user_id = ?", (user_id,))
-    result_name = database_db.fetchall()
-
     try:
-        result_date = (database_db.fetchone()[0]).split("_")[0]
-
-        # _5 вытаскиваем с БД basket выбранного человека и добавляем в БД basket в таблицу user_{user_id}
-        for i, (user_id, fio, birth_date, phone, email, address, city, deliver, comm,
-                nurse_id) in enumerate(result_name, start=1):
-            message_name = f"{fio}, {birth_date}г.\n{phone}\n{email}."
+        for i, (user_id, fio, birth_date, phone, email, address, city) in enumerate(database_db.fetchall(), start=1):
+            name_for_orders = f"{fio}, {birth_date}г.\n{phone}\n{email}."
             user_address = address
             fio_by_dir = f"{fio}."
-            delivery = deliver
-            id_midwiferys = nurse_id
-            if comm is None:
-                comment = "без комментариев..."
-            else:
-                comment = comm
             break
 
     except TypeError:
-        result_date = "Выберите дату!"
+        name_for_orders = "Выберите заказчика!"
+    # ===================================================================================================
+    # ===================================================================================================
+    # _4 вытаскиваем из БД комментарий
+    try:
+        # Пытаемся выполнить запрос к базе данных
+        comment_row = database_db.execute("""SELECT comment FROM users_comments WHERE user_id = ?""",
+                                          (user_id,)).fetchone()
+        # Проверяем, успешно ли выполнен запрос и не является ли comment_row None
+        if comment_row is not None and comment_row[0] is not None:
+            # Если данные есть, сохраняем комментарий
+            comment = comment_row[0]
+        else:
+            # Если данных нет, выводим сообщение об отсутствии комментария
+            comment = "без комментариев..."
+    except Exception as e:
+        # В случае возникновения ошибки выводим сообщение об ошибке
+        print("Произошла ошибка при выполнении запроса к базе данных:", e)
 
-    # =========================================================================================================
-    if len(analysis_all) < 10:
+    # ===================================================================================================
+    # ===================================================================================================
+    if len(analyses_for_users) < 10:
         await call.message.edit_text(text="\U0001F449 Выберите анализы!", reply_markup=await kb_back_to_basket())
-    elif result_name[0][1] is None:
+    elif name_for_orders is None:
         await call.message.edit_text(text="\U0001F449 Выберите заказчика!", reply_markup=await kb_back_to_basket())
-    elif result_date == "Выберите дату!":
+    elif date_selected == "Выберите дату!":
         await call.message.edit_text(text="\U0001F449 Выберите дату!", reply_markup=await kb_back_to_basket())
     else:
 
@@ -1030,46 +1054,26 @@ async def process_confirm_basket(call: CallbackQuery):
         try:
             # ===================================================================================================
             # ===================================================================================================
-            # переносим все выбранные анализы из profit.db в БД profit_income.db
-            string_collection = []
-            price_all_other_analyses = 0
-            database_db.execute(f"""SELECT * FROM users_analyses_selected WHERE users_id = ?""", (user_id,))
-            for i, (code_analyses, name_analysis, tube, readiness, price, price_cost, income,
-                    user_id) in enumerate(database_db.fetchall(),
-                                          start=1):
-                long_string = (f"*** {code_analyses}: {name_analysis} \n---- цена: {price} р. "
-                               f"стоимость: {price_cost} р. кэш: {income}")
-                string_collection.append(long_string)
-                price_all_other_analyses += int(price_cost)
-            string_long_info = "\n".join(string_collection)
-
-            # ====================================================================================
             # инициализируем в БД админа данные о заказе, и прибыли
-            price_all_income = prices - price_all_other_analyses
-            database_db.execute("""INSERT OR IGNORE INTO nurse_profit (date, nurse_id, name, analyses, price, 
-            prime_cost, income) VALUES(?, ?, ?, ?, ?, ?, ?)""",
-                                (result_date, fio_by_dir, string_long_info, prices, price_all_other_analyses,
-                                 price_all_income))
+            price_all_income = all_prices - price_cost_all_analyses
+            database_db.execute("""INSERT OR IGNORE INTO nurse_profit VALUES(?, ?, ?, ?, ?, ?, ?)""",
+                                (date_selected, id_midwiferys, fio_by_dir, analyses_for_profit, all_prices,
+                                 price_cost_all_analyses, price_all_income))
             connect_database.commit()
             # ====================================================================================
             # ====================================================================================
             # ====================================================================================
 
-            database_db.execute(f"INSERT INTO users_orders (date, users_id, nurse_id, name, analysis, price, address, "
-                                f"city, delivery, comment, confirm) "
-                                "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                                (result_date, user_id, id_midwiferys, message_name, analysis_all, prices, user_address,
-                                 city_in_db_basket_add, delivery, comment, "не подтверждена"))
+            database_db.execute(f"INSERT INTO users_orders VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                                (date_selected, user_id, id_midwiferys, name_for_orders, analyses_for_users, all_prices,
+                                 user_address, city_add, delivery, comment, "не подтверждена"))
             connect_database.commit()
 
             # в БД фельдшера, где будет выводить готовую заявку
-            database_db.execute(f"INSERT INTO nurse_orders (date, nurse_id, users_id, name, analyses, tube,  "
-                                f"city, delivery, address, comment, done, confirm, price, price_cost, income) "
-                                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                                (result_date, id_midwiferys, user_id, message_name, analysis_by_order_done, tube,
-                                 city_in_db_basket_add, delivery, user_address, comment, "не выполнено",
-                                 "не подтверждена", price_all_other_analyses, price_all_other_analyses,
-                                 price_all_income))
+            database_db.execute(f"INSERT INTO nurse_orders VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                                (date_selected, id_midwiferys, user_id, name_for_orders, analyses_for_nurse, tube,
+                                 city_add, delivery, user_address, comment, "не выполнено", "не подтверждена",
+                                 price_cost_all_analyses, price_cost_all_analyses, price_all_income))
             connect_database.commit()
 
             # ================================================================================================
@@ -1077,7 +1081,9 @@ async def process_confirm_basket(call: CallbackQuery):
             # ===================================================================================================
             # =======================           УДАЛЕНИЕ           ==============================================
             # ===================================================================================================
-
+            # удаляем комментарий
+            database_db.execute(f"DELETE FROM users_comments WHERE user_id = ?", (user_id,))
+            connect_database.commit()
             # удаляем выбранного пользователя с корзины
             database_db.execute(f"DELETE FROM users_selected WHERE user_id = ?", (user_id,))
             connect_database.commit()
@@ -1087,13 +1093,9 @@ async def process_confirm_basket(call: CallbackQuery):
             connect_database.commit()
             # ===================================================================================================
             # ===================================================================================================
-            # удаляем ДАТУ с нашей БД (date_person.db)
-            database_db.execute("DELETE FROM nurse_date_selected WHERE users_id = ?", (user_id,))
-            connect_database.commit()
-
             # добавляем в БД фельдшера выбранную дату со значком "галочка"
-            database_db.execute(f"""UPDATE nurse_date_selected SET emoji = ? WHERE date = ?""",
-                                ("\U0001F4C6", f"{result_date}_{id_midwiferys}"))
+            database_db.execute(f"""DELETE FROM nurse_date_selected WHERE date = ? AND user_id = ?""",
+                                (date_selected, user_id))
             connect_database.commit()
 
             count = 4
