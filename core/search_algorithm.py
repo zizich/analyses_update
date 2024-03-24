@@ -1,8 +1,8 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 # соединяемся с БД списка общих анализов
-from data_base import all_analysis_db
-from data_base import complex_analyses_db
+from db.base import all_analysis_db
+from db.base import complex_analyses_db
 
 
 # def all_clinic_analysis(group_name):
