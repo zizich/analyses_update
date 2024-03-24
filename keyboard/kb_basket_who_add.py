@@ -1,7 +1,7 @@
 from aiogram.types import InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from data_base import cursor_db
+from db.base import cursor_db
 
 
 async def inline_choice(user_id):

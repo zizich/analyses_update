@@ -4,7 +4,7 @@ from datetime import timedelta
 from datetime import datetime
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from data_base import all_analysis_db
+from db.base import all_analysis_db
 
 # TODO здесь будут хранится все файлы [] типа
 

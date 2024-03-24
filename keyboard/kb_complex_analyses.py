@@ -1,6 +1,6 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from data_base import complex_analyses_db
+from db.base import complex_analyses_db
 
 
 async def kb_complex():

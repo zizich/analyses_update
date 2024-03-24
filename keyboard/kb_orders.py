@@ -1,7 +1,5 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from data_base import basket_db
-
 
 async def kb_orders(result_the_end):
     # выводим все данные с БД basket пользователя на консоль

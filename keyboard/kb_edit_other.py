@@ -1,6 +1,6 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from data_base import job_db
+from db.base import job_db
 
 
 async def edit_people(user_id):
