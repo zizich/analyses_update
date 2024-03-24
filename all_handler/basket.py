@@ -11,7 +11,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from core.fsm_engine import States
 from data_base import database_db, connect_database
-from keyboard import delivery_in_basket, gth_after_add_date, kb_patterns
+from keyboard import delivery_in_basket, kb_patterns
 from keyboard.kb_basket_who_add import inline_choice
 from keyboard.kb_basket_menu import basket_menu, basket_menu_first
 
@@ -29,7 +29,6 @@ async def process_basket(message: Message):
     #  выдает исключение, о том, что ячейка пустая. Решение: система try/except. Если, в basket.db нет инфы, мы
     #  будем брать его с cursor.db
 
-    comment = ""
     # Комментарии пользователей ===========================================================
     try:
         comment = database_db.execute("""SELECT comment FROM users_comments WHERE user_id = ?""",
@@ -162,7 +161,6 @@ async def process_back_to_basket(call: CallbackQuery):
     #  выдает исключение, о том, что ячейка пустая. Решение: система try/except. Если, в basket.db нет инфы, мы
     #  будем брать его с cursor.db
 
-    comment = ""
     # Комментарии пользователей ===========================================================
     try:
         comment = database_db.execute("""SELECT comment FROM users_comments WHERE user_id = ?""",
@@ -381,55 +379,43 @@ async def process_exit_or_self(call: CallbackQuery):
     city = database_db.execute("""SELECT city FROM users_selected WHERE user_id = ?""", (user_id,)).fetchone()[0]
 
     # Выносим из БД все даты выбранные
+
     database_db.execute(f"SELECT * FROM nurse_date_selected WHERE user_id = ?", (user_id,))
-    try:
-        keyboard_after_add_date = InlineKeyboardBuilder()
-        for i, (date_found, nurse_id, users_id, emoji, city, delivery) in enumerate(database_db.fetchall(), start=1):
-            if date_found:  # сравниваем есть ли отмеченная дата у данного пользователя
+    row = database_db.fetchone()
+    if row is not None:
+        date_found, nurse_id, users_id, emoji, city, delivery_db = row
+        kb = InlineKeyboardBuilder()
+        delivery = delivery_db
+        # создал отдельная функция для клавиатур при вызове на дом gth (go_to_home)
+        kb.button(text="удалить дату \U00002702\U0000FE0F\U0001F564",
+                  callback_data=f"delAddDate{date_found}")
+        kb.button(text="назад \U000023EA", callback_data="back_to_basket_menu")
+        kb.adjust(1)
 
-                # создал отдельная функция для клавиатур при вызове на дом gth (go_to_home)
-                kb = gth_after_add_date(keyboard_after_add_date, date_found)
+        await call.message.edit_text(text="\u2705 Вы записаны на "
+                                          "\n{} \U000027A1\U0000FE0F: {}".format(delivery,
+                                                                                 date_found),
+                                     reply_markup=kb.as_markup())
+    else:
+        #  функция для вывода из БД даты без часов и минут
+        database_db.execute("""SELECT * FROM nurse_date_selected WHERE city = ?""", (city,))
+        kb_builder = InlineKeyboardBuilder()
+        collection_date = []
+        for p, (date, nurse_id_db, users_id_db, emoji_db, city_date,
+                delivery_db) in enumerate(database_db.fetchall(), start=1):
+            if delivery_db in "вызов на дом" and emoji_db in "\U0001F4CC":
+                collection_date.append(date.split(' ')[0])
 
-                # времени кнопки-даты с БД добавляются в коллекцию
-                if len(transfer_date) > 20:
-                    text_delivery = "самообращение"
-                else:
-                    text_delivery = "вызов на дом"
-                await call.message.edit_text(text="\u2705 Вы записаны на "
-                                                  "\n{} \U000027A1\U0000FE0F: {}".format(text_delivery,
-                                                                                         transfer_date),
-                                             reply_markup=await kb)
+        unique_date = list(set(collection_date))
 
-                break
+        for date_i in unique_date:
+            kb_builder.button(text=date_i, callback_data=f"gthDate_{date_i}")
+        kb_builder.button(text="назад \U000023EA", callback_data="exit_or_self_conversion")
+        kb_builder.adjust(1)
 
-    except TypeError:
-        keyboard_gth = InlineKeyboardBuilder()
-        try:
-            #  функция для вывода из БД даты без часов и минут
-            async def kb_gth_add_date():
-                database_db.execute("""SELECT * FROM nurse_date_selected WHERE city = ?""", (city,))
-                kb_builder = InlineKeyboardBuilder()
-                collection_date = []
-                for p, (date, nurse_id, users_id, emoji, city_date,
-                        delivery) in enumerate(database_db.fetchall(), start=1):
-                    if delivery in "вызов на дом" and emoji in "\U0001F4CC":
-                        collection_date.append(date.split(' ')[0])
-
-                unique_date = list(set(collection_date))
-
-                for date_i in unique_date:
-                    kb_builder.button(text=date_i, callback_data=f"gthDate_{date_i}")
-                kb_builder.button(text="назад \U000023EA", callback_data="exit_or_self_conversion")
-                kb_builder.adjust(1)
-                return kb_builder.as_markup()
-
-            await call.message.edit_text(text=f"<b>Вызов на дом \U0001F691</b>"
-                                              f"\nВыберите дату \U00002935\U0000FE0F",
-                                         reply_markup=await kb_gth_add_date())
-        except TypeError:
-            keyboard_gth.button(text="назад \U000023EA", callback_data="exit_or_self_conversion")
-            keyboard_gth.adjust(1)
-            await call.message.answer(text=f"Свободных дат нет", reply_markup=keyboard_gth.as_markup())
+        await call.message.edit_text(text=f"<b>Вызов на дом \U0001F691</b>"
+                                          f"\nВыберите дату \U00002935\U0000FE0F",
+                                     reply_markup=kb_builder.as_markup())
 
 
 #  обработка функции для вывода пользователям времени выбранной даты при вызове на дом
@@ -448,7 +434,7 @@ async def process_gth_time(call: CallbackQuery):
             if delivery in "вызов на дом" and emoji in "\U0001F4CC":
                 if input_date in date:
                     kb_builder.button(text=f"{(date.split('_')[0]).split(' ')[1]} {emoji}",
-                                      callback_data=f"unique_{date}-{nurse_id}")
+                                      callback_data=f"unique_{date}>{nurse_id}")
         kb_builder.adjust(4)
         kb_builder.button(text="назад \U000023EA", callback_data="go_to_home")
         return kb_builder.as_markup()
@@ -463,55 +449,47 @@ async def process_gth_time(call: CallbackQuery):
 async def process_exit_or_self(call: CallbackQuery):
     global transfer_date
     user_id = call.message.chat.id
-    text_delivery = ""
+
+    city = database_db.execute("""SELECT city FROM users_selected WHERE user_id = ?""", (user_id,)).fetchone()[0]
 
     # Выносим из БД все даты выбранные
+
     database_db.execute(f"SELECT * FROM nurse_date_selected WHERE user_id = ?", (user_id,))
-    date_in = database_db.fetchall()
-
-    try:
-
-        keyboard_after_add_date = InlineKeyboardBuilder()
-        for o, (date_found, nurse_id, users_id, emoji, city, delivery) in enumerate(date_in, start=1):
-            text_delivery = delivery
-            keyboard_after_add_date.button(text="удалить дату \U00002702\U0000FE0F\U0001F564",
-                                           callback_data=f"delAddDate{transfer_date}")
-        keyboard_after_add_date.button(text="назад \U000023EA", callback_data="back_to_basket_menu")
-        keyboard_after_add_date.adjust(1)
+    row = database_db.fetchone()
+    if row is not None:
+        date_found, nurse_id, users_id, emoji, city, delivery_db = row
+        kb = InlineKeyboardBuilder()
+        delivery = delivery_db
+        # создал отдельная функция для клавиатур при вызове на дом gth (go_to_home)
+        kb.button(text="удалить дату \U00002702\U0000FE0F\U0001F564",
+                  callback_data=f"delAddDate{date_found}")
+        kb.button(text="назад \U000023EA", callback_data="back_to_basket_menu")
+        kb.adjust(1)
 
         await call.message.edit_text(text="\u2705 Вы записаны на "
-                                          "\n{} \U000027A1\U0000FE0F: {}".format(text_delivery,
-                                                                                 transfer_date),
-                                     reply_markup=await keyboard_after_add_date.as_markup())
-    except TypeError:
-        city = database_db.execute("""SELECT city FROM users_selected WHERE user_id = ?""", (user_id,)).fetchone()[0]
+                                          "\n{} \U000027A1\U0000FE0F: {}".format(delivery,
+                                                                                 date_found),
+                                     reply_markup=kb.as_markup())
+    else:
+        #  функция для вывода из БД даты без часов и минут
         database_db.execute("""SELECT * FROM nurse_date_selected WHERE city = ?""", (city,))
-        try:
-            async def kb_gtc_add_date():
-                kb_gtc_date = InlineKeyboardBuilder()
-                collection_date = []
-                for i, (date, nurse_id_, users_id_, emoji_, city_date,
-                        delivery_) in enumerate(database_db.fetchall(), start=1):
-                    if delivery_ in "самообращение" and emoji_ in "\U0001F4CC":
-                        collection_date.append(date.split(' ')[0])
-                        # keyboard_gtm.button(text=f"{date.split('_')[0]} {done}", callback_data=f"unique_{date}")
+        kb_builder = InlineKeyboardBuilder()
+        collection_date = []
+        for p, (date, nurse_id_db, users_id_db, emoji_db, city_date,
+                delivery_db) in enumerate(database_db.fetchall(), start=1):
+            if delivery_db in "самообращение" and emoji_db in "\U0001F4CC":
+                collection_date.append(date.split(' ')[0])
 
-                unique_date = list(set(collection_date))
+        unique_date = list(set(collection_date))
 
-                for date_i in unique_date:
-                    kb_gtc_date.button(text=date_i, callback_data=f"gtcAddDate_{date_i}")
-                kb_gtc_date.button(text="назад \U000023EA", callback_data="exit_or_self_conversion")
-                kb_gtc_date.adjust(1)
-                return kb_gtc_date.as_markup()
+        for date_i in unique_date:
+            kb_builder.button(text=date_i, callback_data=f"gtcAddDate_{date_i}")
+        kb_builder.button(text="назад \U000023EA", callback_data="exit_or_self_conversion")
+        kb_builder.adjust(1)
 
-            await call.message.edit_text(text=f"<b>Самообращение \U0001F3E5</b>"
-                                              f"\nВыберите дату \U00002935\U0000FE0F",
-                                         reply_markup=await kb_gtc_add_date())
-        except TypeError:
-            keyboard_gtm = InlineKeyboardBuilder()
-            keyboard_gtm.button(text="назад \U000023EA", callback_data="exit_or_self_conversion")
-            keyboard_gtm.adjust(1)
-            await call.message.answer(text=f"Свободных дат нет", reply_markup=keyboard_gtm.as_markup())
+        await call.message.edit_text(text=f"<b>Самообращение \U0001F691</b>"
+                                          f"\nВыберите дату \U00002935\U0000FE0F",
+                                     reply_markup=kb_builder.as_markup())
 
 
 #  обработка функции для вывода пользователям времени выбранной даты при САМООБРАЩЕНИИ
