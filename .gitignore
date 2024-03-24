@@ -1,0 +1,16 @@
+*/__pycache__/*
+*.pyc
+.cache
+*.egg-info
+*.eggs/
+.cov*
+
+.idea
+.vscode
+
+.venv
+.env
+venv/
+env/
+
+.python-version
