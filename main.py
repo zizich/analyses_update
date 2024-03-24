@@ -1,14 +1,13 @@
 import asyncio
 import locale
-import logging
 
 import platform
 from aiogram import Bot, Dispatcher
 
-from all_handler import (
+from config import BOT_TOKEN
+from handlers import (
     start_command_handler,
     profile,
-    childs,
     other,
     search_analyses,
     basket,
@@ -16,12 +15,11 @@ from all_handler import (
     archive,
     sale,
     feedback,
-    doctors
+    doctors,
+    edit_user,
+    edit_other,
+    first_registration
 )
-from config import BOT_TOKEN
-from all_handler import start_command_handler, profile, other, search_analyses, basket, orders, archive, sale, \
-    feedback, doctors
-from registration import first_registration, edit_user, edit_other
 
 # logging.basicConfig(level=logging.INFO)
 # logger = logging.getLogger(__name__)

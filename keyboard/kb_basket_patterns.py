@@ -1,6 +1,6 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from data_base import pattern_db
+from db.base import pattern_db
 
 
 async def kb_patterns(user_id):
