@@ -12,5 +12,3 @@ else:
 
 connect_database = sq.connect(path_users)
 database_db = connect_database.cursor()
-
-

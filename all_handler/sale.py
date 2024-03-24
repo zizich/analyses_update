@@ -29,11 +29,11 @@ async def process_sale(message: Message):
 
     keyboard = InlineKeyboardBuilder()
 
-    for i, (id_analyses, id_list, name, price, info, tube, readiness, sale, sale_number, price_other, stop) in (
-            enumerate(result_sale, start=1)):
+    for i, (sequence_number, code_number, analysis, synonyms, info, tube, readiness, sale, price, prime_cost,
+            stop, commplex) in (enumerate(result_sale, start=1)):
         if stop != 0 and sale:
-            keyboard.button(text=f"{sale_number} % \U00002198 {name} ",
-                            callback_data="actionShow_{}-{}".format(id_analyses, sale_number))
+            keyboard.button(text=f"{sale} % \U00002198 {analysis} ",
+                            callback_data="actionShow_{}-{}".format(code_number, sale))
 
     keyboard.adjust(1)
 
