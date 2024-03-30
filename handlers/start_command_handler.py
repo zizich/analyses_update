@@ -9,9 +9,8 @@ from aiogram.filters import CommandStart, Command, ChatMemberUpdatedFilter, IS_N
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from core.fsm_engine import States
-from db.base import cursor_db, conn, basket_db, connect_added, profit_db, connect_profit, \
-    pattern_db
 from keyboard.replykeyboard import reply_keyboard_menu
+import queries.user as query
 
 router = Router(name=__name__)
 
@@ -21,9 +20,7 @@ async def process_start(message: Message, state: FSMContext):
     user_id = message.from_user.id
 
     try:
-        cursor_db.execute("SELECT fio, birth_date, phone, email, city, address"
-                          f" FROM users_{user_id} WHERE user_id = ?", (f"{user_id}-1",))
-        user = cursor_db.fetchall()
+        user = query.get_user_by(user_id)
 
         for i, (fio, birth_date, phone, email, city, address) in enumerate(user, start=1):
             if city is None:
@@ -99,63 +96,13 @@ async def process_start(message: Message, state: FSMContext):
     except sqlite3.OperationalError:
         # логика: в БД added_analysis.db будем создавать каждый раз таблицу индивидуальную для каждого пользователя
         # и будем добавлять туда выбранный анализ
-        connect_added.execute(f"CREATE TABLE IF NOT EXISTS user_{user_id}"
-                              "(id INTEGER PRIMARY KEY, name TEXT, price INTEGER, tube TEXT, readiness INTEGER)")
-        connect_added.commit()
+        query.create_analyse(user_id)
+        query.create_user_profit_data(user_id)  # создаем таблицу для передачи дохода администратору
+        query.create_user_order(user_id)
+        query.create_user_pattern(user_id)
+        query.create_user(user_id)
 
-        # создаем таблицу для передачи дохода администратору
-        profit_db.execute(f"""CREATE TABLE IF NOT EXISTS user_{user_id}
-                              (id_list INTEGER,
-                              name_analysis TEXT,
-                              price TEXT,
-                              price_other TEXT,
-                              price_income TEXT
-                            )""")
-        connect_profit.commit()
-
-        basket_db.execute(f"""
-            CREATE TABLE IF NOT EXISTS user_{user_id}(
-                id_date TEXT,
-                name TEXT,
-                analysis TEXT,
-                price INTEGER,
-                address TEXT,
-                city TEXT,
-                delivery TEXT,
-                comment TEXT,
-                id_midwifery TEXT,
-                confirm TEXT
-            )
-            """)
-
-        pattern_db.execute(f"""
-            CREATE TABLE IF NOT EXISTS user_{user_id}(
-                date TEXT,
-                name_pattern TEXT,
-                analysis_numbers TEXT
-                )
-            """)
-
-        cursor_db.execute(f"""CREATE TABLE IF NOT EXISTS users_{user_id}(
-            user_id TEXT PRIMARY KEY,
-            fio TEXT,
-            birth_date TEXT,
-            phone INTEGER,
-            email TEXT,
-            city TEXT,
-            address TEXT,
-            subscribe TEXT, 
-            photo BLOB
-        )""")
-
-        cursor_db.execute(f"""INSERT OR IGNORE INTO users_{user_id} (user_id) VALUES (?)""",
-                          (f"{user_id}-1",))
-        conn.commit()
-
-        # try:
-        cursor_db.execute("SELECT fio, birth_date, phone, email, address, city"
-                          f" FROM users_{user_id} WHERE user_id = ?", (f"{user_id}-1",))
-        user = cursor_db.fetchall()
+        user = query.get_user_by(user_id)
 
         for i, (fio, birth_date, phone, email, address, city) in enumerate(user, start=1):
             if city is None:

@@ -1,14 +1,12 @@
+import queries.search_analyse as query
+
 from aiogram import Router, F, exceptions
 from aiogram.fsm.context import FSMContext
-
 from aiogram.types import Message, CallbackQuery, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-
 from core.any_process import translate_any_number_analysis
 from core.fsm_engine import States
 from core.search_algorithm import search_analyses, all_complex, all_complex_selected
-from db.base import basket_db, conn_basket, all_analysis_db, add_db, connect_added, \
-    profit_db, connect_profit
 from keyboard import base_menu_analyses, info_by_analyses, kb_previous_search, kb_complex
 
 router = Router(name=__name__)
@@ -19,20 +17,18 @@ search_word = ""  # переменная для назначения анали�
 @router.message(F.text.in_(['\U0001F489 Анализы']))
 async def process_take_tests(message: Message):
     user_id = message.chat.id
-    basket_db.execute("""INSERT OR IGNORE INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                      (user_id, None, None, None, None, None, None, None, None, None))
-    conn_basket.commit()
-    keyboard = InlineKeyboardBuilder()
-    keyboard.button(text="Комплексы \U0001F9EA", callback_data="group_buttons")
-    keyboard.button(text="Поиск \U0001F50E", callback_data="search_analysis")
-    keyboard.button(text="Стоп лист \u26D4\ufe0f", callback_data="stop_list")
-    keyboard.adjust(1)
+
+    query.init_new_user_in_basket(user_id)
+
     await message.answer(text="\U000027A1 Перед выбором, ознакомьтесь со стоп-листом \U0001F6AB: ",
-                         reply_markup=keyboard.as_markup())
+                         reply_markup=await base_menu_analyses())
 
 
 @router.callback_query(F.data == "back_to_analyses")
 async def process_back_to_analyses(call: CallbackQuery):
+    user_id = call.message.chat.id
+
+    query.init_new_user_in_basket(user_id)
     await call.message.edit_text(text="\U000027A1 Перед выбором, ознакомьтесь со стоп-листом \U0001F6AB: ",
                                  reply_markup=await base_menu_analyses())
 
@@ -81,14 +77,14 @@ async def process_find_search(message: Message, state: FSMContext):
 @router.callback_query(F.data.startswith('id_'))
 async def process_income_analysis(call: CallbackQuery):
     idAnalyses = (call.data.split('id_')[1]).split("-")[0]
-    stop_analysis = all_analysis_db.execute("""SELECT stopped FROM clinic WHERE id_num = ?""",
-                                            (idAnalyses,)).fetchone()[0]
-    all_analyses = all_analysis_db.execute("""SELECT * FROM clinic WHERE id_num = ?""", (idAnalyses,))
+
+    stop_analysis = query.stop_analyses(idAnalyses)
+    all_analyses = query.found_analyses(idAnalyses)
 
     name_analysis = ""
     if stop_analysis == 1:
         for i, (id_num, id_list, analysis, price, info, tube, readiness, sale, sale_number, price_other, stopped) in (
-                enumerate(all_analyses.fetchall(), start=1)):
+                enumerate(all_analyses, start=1)):
             name_analysis = ("<b>{}</b>\n===========================\nЦена: {}\u20BD "
                              "\nСрок готовности: {} дн.").format(analysis.split('(')[0], price, readiness)
 
@@ -138,19 +134,15 @@ async def processing_found_analysis_search(call: CallbackQuery):
     user_id = call.message.chat.id
     idAnalyses = (call.data.split('addAn_')[1]).split("-")[0]
 
-    result = all_analysis_db.execute("""SELECT * FROM clinic WHERE id_num = ?""", (idAnalyses,)).fetchall()
+    result = query.found_analyses(idAnalyses)
 
     text_for_added = ""
     for i, (id_analysis, id_list, name_analysis, price, info, tube, readiness, sale,
             sale_number, price_other, stop) in enumerate(result, start=1):
-        add_db.execute(f"INSERT OR IGNORE INTO user_{user_id} VALUES (?, ?, ?, ?, ?)",
-                       (id_analysis, name_analysis.split('(')[0], price, tube, readiness))
-        connect_added.commit()
-
         price_income = price - price_other
-        profit_db.execute(f"INSERT OR IGNORE INTO user_{user_id} VALUES (?, ?, ?, ?, ?)",
-                          (id_analysis, name_analysis.split('(')[0], price, price_other, price_income))
-        connect_profit.commit()
+
+        query.add_analyses(user_id, id_list, name_analysis, price, tube, readiness, price_other, price_income)
+
         text_for_added = (f"{name_analysis.split('(')[0]}"
                           "\n==========================="
                           "\n\U00002705 Добавлено в КОРЗИНУ!")
@@ -163,7 +155,7 @@ async def processing_found_analysis_search(call: CallbackQuery):
 async def processing_found_analysis_info(call: CallbackQuery):
     idAnalyses = (call.data.split('infoAn_')[1]).split("-")[0]
 
-    result = all_analysis_db.execute("""SELECT * FROM clinic WHERE id_num = ?""", (idAnalyses,)).fetchall()
+    result = query.found_analyses(idAnalyses)
 
     outcome = ""
     for i, (id_analysis, id_list, name_analysis, price, info, tube, readiness, sale,
@@ -189,14 +181,9 @@ async def processing_found_analysis_delete(call: CallbackQuery):
     user_id = call.message.chat.id
     idAnalyses = (call.data.split('delAn_')[1]).split("-")[0]
 
-    name_analysis = all_analysis_db.execute("""SELECT name_analysis FROM clinic WHERE id_num = ?""",
-                                            (idAnalyses,)).fetchone()[0]
+    name_analysis = query.found_analyses(idAnalyses)[0][2]
 
-    add_db.execute(f"DELETE FROM user_{user_id} WHERE id = ?", (idAnalyses,))
-    connect_added.commit()
-
-    profit_db.execute(f"DELETE FROM user_{user_id} WHERE id_list = ?", (idAnalyses,))
-    connect_profit.commit()
+    query.delete_analyses_in_db(user_id, idAnalyses)
 
     outcome = "Анализ: " + f"\n{name_analysis.split('(')[0]}" + "\n \U0000274E  удален из корзины!"
 
@@ -246,23 +233,17 @@ async def process_komplex_add(call: CallbackQuery):
     user_id = call.message.chat.id
     list_sequence = all_complex_selected(call.data.split('addSlctd_')[1])
     # ======================================================================================================
-    all_analysis_db.execute("""SELECT * FROM clinic""")
-    result = all_analysis_db.fetchall()
+    result = query.all_analyses()
     # ======================================================================================================
     outcome = ""
 
     for i, (id_analysis, id_list, name_analysis, price, info, tube, readiness, sale, sale_number,
             price_other, *any_column) in enumerate(result, start=1):
-        if id_analysis in map(int, list_sequence):
-            add_db.execute(f"INSERT OR IGNORE INTO user_{user_id} VALUES (?, ?, ?, ?, ?)",
-                           (id_analysis, name_analysis, price, tube, readiness))
-            connect_added.commit()
+        if id_list in map(int, list_sequence):
             outcome = "\U00002705 Добавлено в Корзину!"
-
             price_income = price - price_other
-            profit_db.execute(f"INSERT OR IGNORE INTO user_{user_id} VALUES (?, ?, ?, ?, ?)",
-                              (id_list, name_analysis, price, price_other, price_income))
-            connect_profit.commit()
+
+            query.add_analyses(user_id, id_list, name_analysis, price, tube, readiness, price_other, price_income)
 
     async def kb_buttons_in():
         keyboard = InlineKeyboardBuilder()
@@ -279,19 +260,15 @@ async def process_komplex_add(call: CallbackQuery):
     user_id = call.message.chat.id
     list_sequence = all_complex_selected(call.data.split('delSlctd_')[1])
     # ======================================================================================================
-    all_analysis_db.execute("""SELECT * FROM clinic""")
-    result = all_analysis_db.fetchall()
+    result = query.all_analyses()
     # ======================================================================================================
     outcome = ""
     for i, (id_analysis, id_list, name_analysis, price, info, tube, readiness, sale, sale_number,
             price_other, *any_column) in enumerate(result, start=1):
         if id_analysis in map(int, list_sequence):
-            add_db.execute(f"DELETE FROM user_{user_id} WHERE id = ?", (id_analysis,))
-            connect_added.commit()
             outcome = "Удален из Корзины!"
 
-            profit_db.execute(f"DELETE FROM user_{user_id} WHERE id_list = ?", (id_list,))
-            connect_profit.commit()
+            query.delete_analyses_in_db(user_id, id_list)
 
     async def kb_buttons_in():
         keyboard = InlineKeyboardBuilder()
@@ -308,8 +285,9 @@ async def process_komplex_add(call: CallbackQuery):
 @router.callback_query(F.data == "stop_list")
 async def process_stop_list(call: CallbackQuery):
     stop_analyses = []
-    all_analysis_db.execute("""SELECT * FROM clinic WHERE stopped = ?""", (0,))
-    result = all_analysis_db.fetchall()
+
+    result = query.all_stop_analyses()
+
     for i, (num, id_list, name, *other) in enumerate(result, start=1):
         stop_set = f"{i}) {name}"
         stop_analyses.append(stop_set)

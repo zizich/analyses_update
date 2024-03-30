@@ -1,11 +1,13 @@
 import os
 import sqlite3 as sq
 import aiogram
+import queries.archive as query_archive
+import queries.basket as query_basket
+
 from aiogram import Router, F
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import CallbackQuery, Message, FSInputFile
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from db.base import (midwifery_db, archive_db, connect_archive)
 
 router = Router(name=__name__)
 
@@ -32,16 +34,14 @@ async def process_watch_archive(call: CallbackQuery):
 
     try:
         # Извлечение данных из базы данных
-        archive_db.execute(f"""SELECT * FROM user_{user_id}""")
-        data = archive_db.fetchall()
+        data = query_archive.get_all_archive(user_id)
 
         msg_archive = []
 
         message_text = ""
         for i, (date_id, name, analysis, price, address, city, delivery, comm, confirm, id_midwifery) in (
                 enumerate(data, start=1)):
-            midwifery_db.execute("""SELECT * FROM users_midwifery WHERE user_id = ?""", (id_midwifery,))
-            found_midwifery = midwifery_db.fetchall()
+            found_midwifery = query_archive.get_info_nurse(id_midwifery)
             for y, (user, name_in, female, patronymic, phone, city_in_mid) in enumerate(found_midwifery, start=1):
                 message_text = (f"\nМед.сестра: {name_in} {patronymic} "
                                 f"\nТел.: {phone} ")
@@ -79,7 +79,7 @@ async def process_watch_archive(call: CallbackQuery):
 @router.callback_query(F.data == "delete_archive")
 async def process_delete_archive(call: CallbackQuery):
     user_id = call.message.chat.id
-    archive_db.execute(f"""DROP TABLE IF EXISTS user_{user_id}""")
-    connect_archive.commit()
+
+    query_archive.clear_archive(user_id)
 
     await call.message.answer(text="Архив заявок полностью очищен! \U0001F5D1")

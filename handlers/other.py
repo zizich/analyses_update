@@ -1,12 +1,11 @@
 import uuid
+import queries.others as query
 
 from aiogram import Router, F
 from aiogram.enums import ParseMode
 
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-
-from db.base import cursor_db
 
 router = Router(name=__name__)
 
@@ -15,8 +14,7 @@ router = Router(name=__name__)
 async def process_add_others_people(message: Message):
     user_id = message.from_user.id
 
-    cursor_db.execute(f"""SELECT user_id, fio FROM users_{user_id}""")
-    db_profile = cursor_db.fetchall()
+    db_profile = query.others_profile_info(user_id)
 
     keyboard = InlineKeyboardBuilder()
     try:
@@ -42,8 +40,7 @@ async def process_add_others_people(message: Message):
 async def process_other_profile_back(call: CallbackQuery):
     user_id = call.message.chat.id
 
-    cursor_db.execute(f"""SELECT user_id, fio FROM users_{user_id}""")
-    db_profile = cursor_db.fetchall()
+    db_profile = query.others_profile_info(user_id)
 
     keyboard = InlineKeyboardBuilder()
     try:
@@ -84,8 +81,7 @@ async def process_show_other(call: CallbackQuery):
         ])
         return keyboard_one
 
-    cursor_db.execute(f"""SELECT * FROM users_{user_id} WHERE user_id = ?""", (unique_user,))
-    db_profile = cursor_db.fetchall()
+    db_profile = query.other_info(user_id, unique_user)
 
     try:
         for i, (id_us, fio, birth_date, phone, email, city, address, sub, photo) in enumerate(db_profile, start=1):

@@ -4,7 +4,7 @@ from aiogram.enums import ParseMode
 from aiogram.types import Message, ReplyKeyboardRemove
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from db.base import cursor_db
+import queries.user as query
 
 router = Router(name=__name__)
 
@@ -14,9 +14,7 @@ async def process_profile(message: Message):
     user_id = message.from_user.id
 
     try:
-        cursor_db.execute(f"""SELECT user_id, fio, birth_date, phone, email, city, address
-         FROM users_{user_id} WHERE user_id = ?""", (f"{user_id}-1",))
-        db_profile = cursor_db.fetchall()
+        db_profile = query.users_profile_info(user_id, user_id)
         id_user = db_profile[0][0]
         fio = db_profile[0][1]
         birth_date = db_profile[0][2]
