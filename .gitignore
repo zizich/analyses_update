@@ -1,3 +1,9 @@
+# IDE
+.idea
+.vscode
+
+# python
+.python-version
 */__pycache__/*
 *.pyc
 .cache
@@ -5,12 +11,11 @@
 *.eggs/
 .cov*
 
-.idea
-.vscode
-
+#dev
 .venv
 .env
 venv/
 env/
 
-.python-version
+# db
+*.db
