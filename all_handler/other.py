@@ -6,7 +6,7 @@ from aiogram.enums import ParseMode
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from data_base import cursor_db
+from data_base import database_db
 
 router = Router(name=__name__)
 
@@ -15,14 +15,14 @@ router = Router(name=__name__)
 async def process_add_others_people(message: Message):
     user_id = message.from_user.id
 
-    cursor_db.execute(f"""SELECT user_id, fio FROM users_{user_id}""")
-    db_profile = cursor_db.fetchall()
+    database_db.execute(f"""SELECT user_id, fio FROM users WHERE reference = ?""", (user_id,))
+    db_profile = database_db.fetchall()
 
     keyboard = InlineKeyboardBuilder()
     try:
         unique_code = f"{uuid.uuid4()}"[:10]
         for i, (id_us, fio) in enumerate(db_profile, start=1):
-            if id_us == f"{user_id}-1":
+            if id_us in str(user_id):
                 pass
             else:
                 keyboard.button(text=f"{fio}", callback_data=f"others_{id_us}")
@@ -42,22 +42,20 @@ async def process_add_others_people(message: Message):
 async def process_other_profile_back(call: CallbackQuery):
     user_id = call.message.chat.id
 
-    cursor_db.execute(f"""SELECT user_id, fio FROM users_{user_id}""")
-    db_profile = cursor_db.fetchall()
+    database_db.execute(f"""SELECT user_id, fio FROM users WHERE reference = ?""", (user_id,))
+    db_profile = database_db.fetchall()
 
     keyboard = InlineKeyboardBuilder()
     try:
         async def kb_others_list():
-            unique_code = f"{uuid.uuid4()}"[:10]
+            unique_cod = f"{uuid.uuid4()}"[:10]
             for i, (id_us, fio) in enumerate(db_profile, start=1):
-
-                if id_us == f"{user_id}-1":
+                if id_us in str(user_id):
                     pass
                 else:
-
                     keyboard.button(text=f"{fio}", callback_data=f"others_{id_us}")
 
-            keyboard.button(text="добавить \U00002795", callback_data=f"people_{unique_code}")
+            keyboard.button(text="добавить \U00002795", callback_data=f"people_{unique_cod}")
             keyboard.adjust(1)
 
             return keyboard.as_markup()
@@ -65,15 +63,14 @@ async def process_other_profile_back(call: CallbackQuery):
         await call.message.edit_text("Список: ", reply_markup=await kb_others_list())
 
     except TypeError:
-        unique_cod = f"{uuid.uuid4()}"[:10]
-        keyboard.button(text="добавить \U00002795", callback_data=f"people_{unique_cod}")
+        unique_co = f"{uuid.uuid4()}"[:10]
+        keyboard.button(text="добавить \U00002795", callback_data=f"people_{unique_co}")
         keyboard.adjust(1)
         await call.message.answer("Список пуст!", reply_markup=keyboard.as_markup())
 
 
 @router.callback_query(F.data.startswith("others_"))
 async def process_show_other(call: CallbackQuery):
-    user_id = call.message.chat.id
     unique_user = call.data.split("others_")[1]
 
     async def kb_other_user_info():
@@ -84,11 +81,12 @@ async def process_show_other(call: CallbackQuery):
         ])
         return keyboard_one
 
-    cursor_db.execute(f"""SELECT * FROM users_{user_id} WHERE user_id = ?""", (unique_user,))
-    db_profile = cursor_db.fetchall()
+    database_db.execute(f"""SELECT * FROM users WHERE user_id = ?""", (unique_user,))
+    db_profile = database_db.fetchall()
 
     try:
-        for i, (id_us, fio, birth_date, phone, email, city, address, sub, photo) in enumerate(db_profile, start=1):
+        for i, (user_id, fio, birth_date, phone, email, city, address, subscribe, info, others,
+                photo, reference) in enumerate(db_profile, start=1):
             await call.message.edit_text("<b>Другие профили:</b>" + "\n" +
                                          f"     ♻️ ФИО: <b>{fio}</b>"
                                          + "\n" +

@@ -4,7 +4,7 @@ from datetime import timedelta
 from datetime import datetime
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from data_base import all_analysis_db
+from data_base import database_db
 
 # TODO здесь будут хранится все файлы [] типа
 
@@ -82,7 +82,7 @@ def return_translate(name):
 
 # TODO выводим с БД анализов
 
-all_analysis_db.execute("SELECT * FROM clinic")
+database_db.execute("SELECT * FROM analyses")
 
 number_analysis = []  # TODO все порядковые номера анализов 411, 412, 413 и т.д.
 translate_number_analysis = {}  # TODO словарь где ключ: анализ, значение: номер
@@ -91,12 +91,12 @@ translate_each_analysis = {}  # TODO переменная для перевод�
 each_analysis_list = []  # TODO переменная для английского варианта анализа
 any_word = {}
 
-for i, (id_num, id_list, analysis, price, info, tube, readiness, sale, sale_number, price_other, stopped) in (
-        enumerate(all_analysis_db.fetchall(), start=1)):
-    number_analysis.append(str(id_num))
-    translate_number_analysis["{}\nЦена: {}\u20BD".format(analysis.split('(')[0], price)] = str(id_num)
+for i, (sequence_number, code_number, analysis, synonyms, info, tube, readiness, sale, price, prime_cost,
+        stop, commplex) in (enumerate(database_db.fetchall(), start=1)):
+    number_analysis.append(str(code_number))
+    translate_number_analysis["{}\nЦена: {}\u20BD".format(analysis.split('(')[0], price)] = str(code_number)
     rus_each_analysis.append(analysis)
-    translate_each_analysis[analysis] = str(id_num)
+    translate_each_analysis[analysis] = str(code_number)
     each_analysis_list.append(return_translate(analysis))
 
 

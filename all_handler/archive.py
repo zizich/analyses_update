@@ -5,7 +5,7 @@ from aiogram import Router, F
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import CallbackQuery, Message, FSInputFile
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from data_base import (midwifery_db, archive_db, connect_archive)
+from data_base import database_db, connect_database
 
 router = Router(name=__name__)
 
@@ -32,25 +32,25 @@ async def process_watch_archive(call: CallbackQuery):
 
     try:
         # Извлечение данных из базы данных
-        archive_db.execute(f"""SELECT * FROM user_{user_id}""")
-        data = archive_db.fetchall()
+        database_db.execute(f"""SELECT * FROM users_archive WHERE users_id = ?""", (user_id,))
+        data = database_db.fetchall()
 
         msg_archive = []
 
         message_text = ""
-        for i, (date_id, name, analysis, price, address, city, delivery, comm, confirm, id_midwifery) in (
+        for i, (date, users_id, nurse_id, name, analysis, price, address, city, delivery, comment, confirm) in (
                 enumerate(data, start=1)):
-            midwifery_db.execute("""SELECT * FROM users_midwifery WHERE user_id = ?""", (id_midwifery,))
-            found_midwifery = midwifery_db.fetchall()
+            database_db.execute("""SELECT * FROM nurse WHERE nurse_id = ?""", (nurse_id,))
+            found_midwifery = database_db.fetchall()
             for y, (user, name_in, female, patronymic, phone, city_in_mid) in enumerate(found_midwifery, start=1):
                 message_text = (f"\nМед.сестра: {name_in} {patronymic} "
                                 f"\nТел.: {phone} ")
-            message_archive = (f"{i}) Дата: {date_id}:\n* Личные данные: {name}"
+            message_archive = (f"{i}) Дата: {date}:\n* Личные данные: {name}"
                                f"\n* Анализы: \n{analysis}"
                                f"\n* Сумма: {price} р."
                                f"\nГород: {city}, {address}"
                                f"\nСпособ заявки: {delivery}"
-                               f"\nКомментарии: {comm}"
+                               f"\nКомментарии: {comment}"
                                f"\nСтатус: {confirm}"
                                f"\n-------------------------------------"
                                f"\n{message_text}"
@@ -79,7 +79,7 @@ async def process_watch_archive(call: CallbackQuery):
 @router.callback_query(F.data == "delete_archive")
 async def process_delete_archive(call: CallbackQuery):
     user_id = call.message.chat.id
-    archive_db.execute(f"""DROP TABLE IF EXISTS user_{user_id}""")
-    connect_archive.commit()
+    database_db.execute(f"""DELETE FROM users_archive WHERE users_id = ?""", (user_id,))
+    connect_database.commit()
 
     await call.message.answer(text="Архив заявок полностью очищен! \U0001F5D1")

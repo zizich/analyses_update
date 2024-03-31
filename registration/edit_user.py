@@ -5,7 +5,7 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from core.fsm_engine import States
-from data_base import cursor_db, conn, basket_db, conn_basket
+from data_base import database_db, connect_database
 from keyboard import edit_user
 from keyboard.kb_edit_other import choice_city, choice_edit_city
 from keyboard.replykeyboard import reply_keyboard_menu
@@ -16,7 +16,20 @@ router = Router(name=__name__)
 # =============================ОБРАБОТКА КНОПКИ "РЕДАКТИРОВАТЬ ПРОФИЛЬ"=====================================
 @router.callback_query(F.data == "edit_profile")
 async def process_edit_profile(call: CallbackQuery):
-    await call.message.edit_text(text="Редактировать данные: ", reply_markup=await edit_user())
+    user_id = call.message.chat.id
+
+    database_db.execute("""SELECT fio, birth_date, phone, email, city, address FROM users WHERE user_id = ?""",
+                        (user_id,))
+    print(user_id)
+    for i, (fio, birth_date, phone, email, city, address) in enumerate(database_db.fetchall(), start=1):
+        await call.message.edit_text(text=f"<b>\U0001F3E0 РЕДАКТИРОВАТЬ ПРОФИЛЬ:</b>"
+                                          f"\n==========================="
+                                          f"\n    ♻️ Ваш id:   <b>{user_id}</b>"
+                                          f"\n    ♻️ ФИО:   <b>{fio}</b>"
+                                          f"\n    ♻️ Номер телефона: <b>{phone}</b>"
+                                          f"\n    ♻️ e-mail: <b>{email}</b>"
+                                          f"\n    ♻️ Город: <b>{city}</b> \U0001F3E0"
+                                          f"\n    ♻️ Адресс: <b>{address}</b>", reply_markup=await edit_user())
 
 
 # ==================================ОБРАБОТКА КНОПКИ "РЕДАКТИРОВАТЬ ИМЯ"=====================================
@@ -32,9 +45,9 @@ async def process_edit_name_user(call: CallbackQuery, state: FSMContext):
 async def process_edit_name_user_back(message: Message, state: FSMContext):
     user_id = message.chat.id
     await state.update_data(waiting_for_edit_fio_user=message.text)
-    cursor_db.execute(f"""UPDATE users_{user_id} SET fio = ? WHERE user_id = ?""",
-                      (message.text, f"{message.from_user.id}-1"))
-    conn.commit()
+    database_db.execute(f"""UPDATE users SET fio = ? WHERE user_id = ?""",
+                        (message.text, user_id))
+    connect_database.commit()
     await state.clear()
     kb = InlineKeyboardBuilder()
     kb.button(text="назад", callback_data="edit_profile")
@@ -54,9 +67,9 @@ async def process_edit_birth_date_user(call: CallbackQuery, state: FSMContext):
 async def process_edit_birth_date_user_back(message: Message, state: FSMContext):
     user_id = message.chat.id
     await state.update_data(waiting_for_edit_birth_date_user=message.text)
-    cursor_db.execute(f"""UPDATE users_{user_id} SET birth_date = ? WHERE user_id = ?""",
-                      (message.text, f"{message.from_user.id}-1"))
-    conn.commit()
+    database_db.execute(f"""UPDATE users SET birth_date = ? WHERE user_id = ?""",
+                        (message.text, user_id))
+    connect_database.commit()
     await state.clear()
     kb = InlineKeyboardBuilder()
     kb.button(text="назад", callback_data="edit_profile")
@@ -76,9 +89,9 @@ async def process_edit_phone_user(call: CallbackQuery, state: FSMContext):
 async def process_edit_phone_user_back(message: Message, state: FSMContext):
     user_id = message.chat.id
     await state.update_data(waiting_for_edit_phone_user=message.text)
-    cursor_db.execute(f"""UPDATE users_{user_id} SET phone = ? WHERE user_id = ?""",
-                      (message.text, f"{message.from_user.id}-1"))
-    conn.commit()
+    database_db.execute(f"""UPDATE users SET phone = ? WHERE user_id = ?""",
+                        (message.text, user_id))
+    connect_database.commit()
     await state.clear()
     kb = InlineKeyboardBuilder()
     kb.button(text="назад", callback_data="edit_profile")
@@ -98,9 +111,9 @@ async def process_edit_email_user(call: CallbackQuery, state: FSMContext):
 async def process_edit_email_user_back(message: Message, state: FSMContext):
     user_id = message.chat.id
     await state.update_data(waiting_for_edit_email_user=message.text)
-    cursor_db.execute(f"""UPDATE users_{user_id} SET email = ? WHERE user_id = ?""",
-                      (message.text, f"{message.from_user.id}-1"))
-    conn.commit()
+    database_db.execute(f"""UPDATE users SET email = ? WHERE user_id = ?""",
+                        (message.text, user_id))
+    connect_database.commit()
     await state.clear()
     kb = InlineKeyboardBuilder()
     kb.button(text="назад", callback_data="edit_profile")
@@ -117,23 +130,10 @@ async def process_edit_city_user(call: CallbackQuery):
 async def process_add_city(call: CallbackQuery):
     user_id = call.message.chat.id
 
-    try:
-        city_found = basket_db.execute("""SELECT city FROM users WHERE user_id = ?""",
-                                       (user_id,)).basket_db.fetchone()[0]
-
-        basket_db.execute("""UPDATE users SET city = ? WHERE user_id = ?""", (None, user_id))
-        conn_basket.commit()
-        city_found.clear()
-    except (TypeError, AttributeError):
-        pass
-
     city = call.data.split("cityEdit_")[1]
 
-    basket_db.execute("""UPDATE users SET city = ? WHERE user_id = ?""", (city, user_id))
-    conn_basket.commit()
-
-    cursor_db.execute(f"""UPDATE users_{user_id} SET city = ? WHERE user_id = ?""", (city, f"{user_id}-1"))
-    conn.commit()
+    database_db.execute(f"""UPDATE users SET city = ? WHERE user_id = ?""", (city, user_id))
+    connect_database.commit()
 
     kb = InlineKeyboardBuilder()
     kb.button(text="назад", callback_data="edit_profile")
@@ -153,9 +153,9 @@ async def process_edit_address_user(call: CallbackQuery, state: FSMContext):
 async def process_edit_edit_address_user(message: Message, state: FSMContext):
     user_id = message.chat.id
     await state.update_data(waiting_for_edit_address_user=message.text)
-    cursor_db.execute(f"""UPDATE users_{user_id} SET address = ? WHERE user_id = ?""",
-                      (message.text, f"{message.from_user.id}-1"))
-    conn.commit()
+    database_db.execute(f"""UPDATE users SET address = ? WHERE user_id = ?""",
+                        (message.text, user_id))
+    connect_database.commit()
     await state.clear()
     await message.answer(text="&#128657")
     await message.answer(text="Данные успешно сохранены!",
