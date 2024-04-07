@@ -27,7 +27,7 @@ class Analyse(Base):
     __tablename__ = 'analyse'
 
     id = Column(Integer, primary_key=True)  # sequence_number
-    code_number = Column(String)
+    code_number = Column(String)  # 22-1111, 221-111
     name = Column(String)
     info = Column(String)
     tube = Column(Enum(TubeType))

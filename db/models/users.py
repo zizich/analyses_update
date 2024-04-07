@@ -10,12 +10,12 @@ class User(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     fio = Column(String)
     birth_date = Column(Date)  # На сколько важно это поле?
-    phone = Column(Integer)
-    email = Column(String, nullable=True)
+    phone = Column(String)
     city = Column(String)
+    email = Column(String, nullable=True)
     address = Column(String, nullable=True)
 
-    orders = relationship('Order', back_populates='user')
+    # orders = relationship('Order', back_populates='user')
 
     # todo Не ясно назначение
     # subscribe = Column(String)
