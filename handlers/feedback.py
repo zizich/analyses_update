@@ -1,11 +1,12 @@
 import os
 import platform
+import queries.feedback as query_feedback
 
 import sqlite3 as sq
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery, FSInputFile
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from db.base import archive_db, connect_archive
+
 
 system_info = platform.system()
 
@@ -57,10 +58,10 @@ async def process_not_result(call: CallbackQuery):
 
     keyboard = InlineKeyboardBuilder()
     try:
-        archive_db.execute(f"""SELECT * FROM user_{user_id}""")
+        result = query_feedback.get_info_archive(user_id)
 
         for i, (date, name, analysis, price, address, city, delivery, comm, confirm, id_midwifery) in (
-                enumerate(archive_db.fetchall(), start=1)):
+                enumerate(result, start=1)):
             keyboard.button(text=f"{date.split('>>')[0]}", callback_data=f"notResult_{date}")
 
         keyboard.button(text="назад \U000023EE", callback_data="back_to_help")
@@ -87,11 +88,11 @@ async def process_not_result_info(call: CallbackQuery):
     user_id = call.message.chat.id
     date = call.data.strip("notResult_")
 
-    archive_db.execute(f"""SELECT * FROM user_{user_id}""")
+    result = query_feedback.get_info_archive(user_id)
 
     message_archive = ""
     for i, (date_arch, name, analysis, price, address, city, delivery, comm, confirm,
-            id_midwifery) in (enumerate(archive_db.fetchall(), start=1)):
+            id_midwifery) in enumerate(result, start=1):
         if date == date_arch:
             if confirm != "результаты отправлены \U0000203C":
                 confirm_text = "\U0000203C Нету результата \U0000203C"
@@ -118,8 +119,7 @@ async def process_not_result_info(call: CallbackQuery):
     user_id = call.message.chat.id
     date = (call.data.strip("sendRequest_")).split(">>")[0]
 
-    archive_db.execute(f"""UPDATE user_{user_id} SET confirm = ? WHERE id_date = ?""", ("нету результата", date))
-    connect_archive.commit()
+    query_feedback.send_request(user_id, date)
 
     keyboard = InlineKeyboardBuilder()
     keyboard.button(text="назад \U000023EE", callback_data=f"notResult_{date}")

@@ -1,8 +1,7 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 # соединяемся с БД списка общих анализов
-from db.base import all_analysis_db
-from db.base import complex_analyses_db
+import queries.search_analyse as query
 
 
 # def all_clinic_analysis(group_name):
@@ -45,11 +44,7 @@ def search_analyses(name_search):
 
     # Выводим из БД список всех анализов и их параметров. Итерируем анализы по полученной группе (сортировка по
     # уникальному номеру каждого анализа, поиск осуществляется непосредственно по запросу SQL
-    dataBase = all_analysis_db.execute(f"SELECT * FROM clinic WHERE "
-                                       f"name_analysis LIKE '%{name_search}%' OR "
-                                       f"name_analysis LIKE '%{name_search.capitalize()}%' OR "
-                                       f"name_analysis LIKE '%{name_search.lower()}%' OR "
-                                       f"name_analysis LIKE '%{name_search.upper()}%'")
+    dataBase = query.search_analys(name_search)
 
     for i, (sequence, id_list, name_analysis, price, info, tube, readiness, sale, sale_number, price_other, stopped) \
             in enumerate(dataBase.fetchall(), start=1):
@@ -66,10 +61,9 @@ def all_complex(complex_in):
     numbers_collection = []  # переменная для хранения порядкового номера анализа
 
     # ===========================================================================================================
-    result = all_analysis_db.execute("SELECT * FROM clinic").fetchall()
+    result = query.all_analyses()
     # ===========================================================================================================
-    complex_analyses_db.execute("""SELECT * FROM complex""")
-    complex_analysis = complex_analyses_db.fetchall()
+    complex_analysis = query.complex_analyses()
     for y, (name_rus, name_eng, numbers) in enumerate(complex_analysis, start=1):
         if complex_in == name_eng:
             numbers_collection = [item.strip() for item in numbers.split(",")]
@@ -91,8 +85,7 @@ def all_complex(complex_in):
 def all_complex_selected(complex_in):
     selected = []  # для выбранных анализов
     # ===========================================================================================================
-    complex_analyses_db.execute("""SELECT * FROM complex""")
-    complex_analysis = complex_analyses_db.fetchall()
+    complex_analysis = query.complex_analyses()
 
     for y, (name_rus, name_eng, numbers) in enumerate(complex_analysis, start=1):
         if complex_in == name_eng:

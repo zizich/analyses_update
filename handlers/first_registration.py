@@ -1,14 +1,12 @@
 import re
+import queries.user as query
 
 from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
-
 from aiogram.types import Message, CallbackQuery
-from aiogram.utils.keyboard import InlineKeyboardBuilder
-
 from core.fsm_engine import States
-from db.base import cursor_db, conn, basket_db, job_db, conn_basket
 from keyboard.replykeyboard import reply_keyboard_menu
+
 
 router = Router(name=__name__)
 
@@ -19,14 +17,7 @@ router = Router(name=__name__)
 # обработка кнопки name и вернуться в список заполнения
 @router.callback_query(F.data == "button_sub")
 async def process_add_city(call: CallbackQuery):
-    keyboard = InlineKeyboardBuilder()
-
-    job_db.execute("""SELECT * FROM services""")
-    for i, (city, sampling, out_pay, address, phone, bank, all_sale) in enumerate(job_db.fetchall(), start=1):
-        keyboard.button(text=f"{city} \u23E9", callback_data=f"cityAdd_{city}")
-
-    keyboard.adjust(1)
-    await call.message.answer(text="\U0001F3D8 Выберите город:", reply_markup=keyboard.as_markup())
+    await call.message.answer(text="\U0001F3D8 Выберите город:", reply_markup=query.choose_a_city())
 
 
 @router.callback_query(F.data.startswith('cityAdd_'))
@@ -35,11 +26,9 @@ async def process_add_n_sortym(call: CallbackQuery, state: FSMContext):
 
     city = call.data.split("cityAdd_")[1]
 
-    basket_db.execute("""UPDATE users SET city = ? WHERE user_id = ?""", (city, user_id))
-    conn_basket.commit()
+    query.set_city_basket(city, user_id)
+    query.set_city_users(city, user_id)
 
-    cursor_db.execute(f"""UPDATE users_{user_id} SET city = ? WHERE user_id = ?""", (city, f"{user_id}-1"))
-    conn.commit()
     await state.set_state(States.waiting_for_fio)
     await call.message.answer(text=f"Выбрали: \U0001F3E8{city}"
                                    '\nВведите ФИО:')
@@ -91,7 +80,8 @@ async def process_phone(message: Message, state: FSMContext):
 async def process_email(message: Message, state: FSMContext):
     user_id = message.chat.id
 
-    city = cursor_db.execute(f"""SELECT city FROM users_{user_id} WHERE user_id = ?""", (f"{user_id}-1",)).fetchone()[0]
+    city = query.get_city_users(f"{user_id}-1")
+
     await state.update_data(waiting_for_email=message.text)
     await state.set_state(States.waiting_for_address)
     data = await state.get_data()
@@ -118,10 +108,7 @@ async def process_address(message: Message, state: FSMContext):
     address = data['waiting_for_address']
 
     # Обновляем базу данных
-    cursor_db.execute(
-        f"""UPDATE users_{user_id} SET fio = ?, birth_date = ?, phone = ?, email = ?, address = ? 
-            WHERE user_id = ?""", (fio, birth_date, phone, email, address, f"{user_id}-1"))
-    conn.commit()
+    query.set_info_users(user_id, fio, birth_date, phone, email, address)
 
     await state.update_data(waiting_for_address=message.text)
     await message.answer(text="\U0001F52C")
@@ -147,5 +134,3 @@ async def process_address(message: Message, state: FSMContext):
                               "\n--------------------------",
                          reply_markup=reply_keyboard_menu)
     await state.clear()
-
-
