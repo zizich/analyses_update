@@ -2,9 +2,11 @@ from chat_bots.telegram.adapter import TelegramAdapter
 import asyncio
 
 from chat_bots.telegram.patient import PatientRoutes
+from db.base import DBConnection
 from settings import Config
 
 if __name__ == "__main__":
+    db = DBConnection(url=Config.DATABASE_URL)
     adapter = TelegramAdapter(config=Config, routes=PatientRoutes)
     asyncio.run(adapter.run())
 

@@ -9,8 +9,8 @@ class Config:
     # telegram
     TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
     SERVER_HOST = os.getenv('SERVER_HOST')
-    SERVER_PORT = int(os.getenv('SERVER_PORT'))
-    WEBHOOK_PORT = int(os.getenv('WEBHOOK_PORT'))
+    SERVER_PORT = os.getenv('SERVER_PORT')
+    WEBHOOK_PORT = os.getenv('WEBHOOK_PORT')
     WEBHOOK_PATH = os.getenv('WEBHOOK_PATH')
     DOMAIN = os.getenv('DOMAIN')
     WEBHOOK_URL = f'{DOMAIN}:{WEBHOOK_PORT}{WEBHOOK_PATH}'

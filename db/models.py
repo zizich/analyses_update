@@ -1,1 +1,1 @@
-from patient.models import *
+from patient.users.models import *

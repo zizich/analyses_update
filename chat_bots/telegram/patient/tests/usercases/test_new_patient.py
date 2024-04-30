@@ -68,8 +68,8 @@ class TestNewPatient(IsolatedAsyncioTestCase):
         saved_data = dict(my_data='Test')
         await fsm_context.update_data(**saved_data)
 
-        await self.user_case.process_dont_approve_profile(message=self.message, state=fsm_context)
+        await self.user_case.process_approve_profile(message=self.message, state=fsm_context)
 
-        self.message.answer.assert_called_once_with(text='Ваш профиль успешно сохранен!')
+        self.message.answer.assert_called_once_with(text='Ваш профиль успешно сохранен!', reply_markup=ANY)
         self.assertEqual(await fsm_context.get_state(), None)
-        self.assertEqual(await fsm_context.get_data(), saved_data)
+        self.assertEqual(await fsm_context.get_data(), {})
