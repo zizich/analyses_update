@@ -27,7 +27,7 @@ class TelegramAdapter(Adapter):
         await web._run_app(  # noqa
             app=self.web_app,
             host=self.config.SERVER_HOST,
-            port=self.config.SERVER_PORT,
+            port=int(self.config.SERVER_PORT),
             ssl_context=self._create_ssl_context()
         )
 

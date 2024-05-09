@@ -1,6 +1,6 @@
 import functools
 from unittest import IsolatedAsyncioTestCase
-from unittest.mock import AsyncMock, ANY
+from unittest.mock import AsyncMock, ANY, patch, call
 
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage
@@ -15,6 +15,9 @@ class TestNewPatient(IsolatedAsyncioTestCase):
         self.user_case = NewPatient()
         self.message = AsyncMock(answer=AsyncMock())
         self.fsm_builder = functools.partial(FSMContext, storage=MemoryStorage(), key='test')
+
+        self.valid_user_text = 'Иванов Иван Иванович\n80000123456\nСургут, Ленина, 1, 1'
+        self.valid_profile, _ = ProfileDTO.parse_text(self.valid_user_text)
 
     async def test_entrypoint(self):
         fsm_context: FSMContext = self.fsm_builder()
@@ -62,10 +65,11 @@ class TestNewPatient(IsolatedAsyncioTestCase):
         self.assertEqual(await fsm_context.get_state(), self.user_case.States.new_profile)
         self.assertEqual(await fsm_context.get_data(), {})
 
-    async def test_process_approve_profile(self):
+    @patch('utils.resources.BaseResource.create', new_callable=AsyncMock)
+    async def test_process_approve_profile(self, resource_create_mock: AsyncMock):
         fsm_context: FSMContext = self.fsm_builder()
         await fsm_context.set_state(self.user_case.States.approve_profile)
-        saved_data = dict(my_data='Test')
+        saved_data = dict(new_profile=self.valid_profile)
         await fsm_context.update_data(**saved_data)
 
         await self.user_case.process_approve_profile(message=self.message, state=fsm_context)
@@ -73,3 +77,4 @@ class TestNewPatient(IsolatedAsyncioTestCase):
         self.message.answer.assert_called_once_with(text='Ваш профиль успешно сохранен!', reply_markup=ANY)
         self.assertEqual(await fsm_context.get_state(), None)
         self.assertEqual(await fsm_context.get_data(), {})
+        resource_create_mock.assert_called_once_with(data=self.valid_profile.data_to_save())

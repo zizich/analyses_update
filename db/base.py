@@ -1,4 +1,4 @@
-from typing import Self
+from typing import Self, TypeVar
 
 from sqlalchemy import MetaData
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, AsyncEngine
@@ -8,6 +8,10 @@ from sqlalchemy.pool import NullPool
 
 Base = declarative_base()
 metadata = MetaData()
+
+
+class OrmModel(Base):
+    __abstract__ = True
 
 
 class DBConnection:

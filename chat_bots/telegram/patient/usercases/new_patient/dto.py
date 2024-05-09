@@ -3,12 +3,10 @@ from typing import Self, TypeAlias
 
 from pydantic import (
     BaseModel,
-    Field, PrivateAttr,
-    ValidationError,
-    ValidationInfo,
-    field_validator,
+    Field, field_validator,
 )
 
+from patient.users.dto import UserData
 
 ErrMsg: TypeAlias = str
 
@@ -30,7 +28,8 @@ class ProfileDTO(BaseModel):
     )
 
     full_name: str = Field(title='ФИО')
-    phone: str = Field(title='Номер телефона', min_length=11, max_length=11)
+    # phone: int = Field(title='Номер телефона', min_length=11, max_length=11)
+    phone: int = Field(title='Номер телефона')
     address: str = Field(title='Адрес проживания')
 
     def __str__(self):
@@ -55,7 +54,8 @@ class ProfileDTO(BaseModel):
 
         return None, 'Полученные данные введены некорректно.\n'
 
-
+    def data_to_save(self) -> UserData:
+        return UserData(**self.model_dump())
 
     @field_validator('full_name')
     @classmethod

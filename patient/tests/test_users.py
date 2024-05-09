@@ -12,7 +12,7 @@ class TestUsers(DBAsyncTestCase):
     async def test_create_user_success(self):
         user_data = UserData(full_name='Иванов Иван Иванович', phone=80000123456, address='Сургут, Ленина, 1, 1')
 
-        await self.resource.create(user_data=user_data)
+        await self.resource.create(data=user_data)
 
         user_result = await self.resource.get()
         user = user_result.first()
@@ -22,10 +22,10 @@ class TestUsers(DBAsyncTestCase):
 
     async def test_create_user_failed(self):
         user_data = UserData(full_name='Иванов Иван Иванович', phone=80000123456, address='Сургут, Ленина, 1, 1')
-        await self.resource.create(user_data=user_data)
+        await self.resource.create(data=user_data)
 
         with self.assertRaises(ValidationError) as ctx:
-            await self.resource.create(user_data=user_data)
+            await self.resource.create(data=user_data)
 
             self.assertEqual(ctx.exception.args[0], 'Пользователь с таким номером телефона уже существует.')
 

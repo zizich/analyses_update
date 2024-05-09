@@ -11,6 +11,7 @@ from aiogram.types import (
 from chat_bots.telegram import UserCase
 from chat_bots.telegram.patient.usercases.new_patient.dto import ProfileDTO
 from chat_bots.telegram.utils.actions import Approve, Edit
+from patient.users.resources import UserResource
 
 
 class NewPatient(UserCase):
@@ -52,6 +53,9 @@ class NewPatient(UserCase):
     @staticmethod
     @router.message(States.approve_profile, F.text == Approve.RU)
     async def process_approve_profile(message: Message, state: FSMContext) -> None:
+        data = await state.get_data()
+        profile = data['new_profile']
+        await UserResource.create(data=profile.data_to_save())
         await state.clear()
         await message.answer(text='Ваш профиль успешно сохранен!', reply_markup=ReplyKeyboardRemove())
 
